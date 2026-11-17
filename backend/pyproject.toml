@@ -1,0 +1,49 @@
+[project]
+name = "fly-brain"
+version = "0.1.0"
+description = "Spiking fly brain (PyTorch) that plays 21, served over FastAPI"
+readme = "README.md"
+authors = [
+    { name = "Abrams63", email = "leadersia5566@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "a2wsgi>=1.10.10",
+    "dash>=4.5.0",
+    "fastapi>=0.163.1",
+    "neuprint-python>=0.6.4",
+    "numpy>=2.5.5",
+    "pydantic>=2.14.3",
+    "python-dotenv>=1.2.4",
+    "requests>=2.34.2",
+    "torch>=2.15.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+fly-brain = "fly_brain:main"
+fly-connectome = "fly_brain.connectome:main"
+fly-train = "fly_brain.training:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# Ruff's defaults plus import order, naming, pytest style, returns, pathlib, perf.
+extend-select = ["E", "W", "I", "N", "C4", "PIE", "PT", "RET", "PTH", "PERF"]
+# Greek letters and math signs in docstrings and labels are deliberate (γ KCs, Q(stand) − Q(hit), 18 × 10 × 2).
+allowed-confusables = ["−", "–", "×", "γ", "α"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fly_brain"]

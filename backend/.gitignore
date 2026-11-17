@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# secrets: put your connectome token here, never commit it
+.env
+
+# downloaded connectome data and trained weights
+data/
+checkpoints/
