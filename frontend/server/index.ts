@@ -29,11 +29,30 @@ function parseMessage(raw: string | Buffer): ClientMessage | null {
   }
 }
 
+const SITE_URL = (process.env.SITE_URL ?? "https://21-and-fly.com").replace(/\/+$/, "");
+
+const ROBOTS_TXT = `User-agent: *
+Allow: /
+
+Sitemap: ${SITE_URL}/sitemap.xml
+`;
+
+const SITEMAP_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${SITE_URL}/</loc>
+  </url>
+</urlset>
+`;
+
 const server = serve({
   port: Number(process.env.PORT ?? 3000),
 
   routes: {
     "/": index,
+
+    "/robots.txt": new Response(ROBOTS_TXT, { headers: { "Content-Type": "text/plain; charset=utf-8" } }),
+    "/sitemap.xml": new Response(SITEMAP_XML, { headers: { "Content-Type": "application/xml; charset=utf-8" } }),
 
     "/ws/game": (req, server) => {
       const { bet: _bet, ...bank } = readBankCookie(req.headers.get("cookie"));
