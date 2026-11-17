@@ -132,6 +132,16 @@ export interface DopamineEvent {
   replayMs: number;
 }
 
+/** How the fly at this table has played so far. */
+export interface FlyStats {
+  /** Per situation (see `situationKey`): [decisions that matched basic strategy, all decisions]. */
+  cells: Record<string, [number, number]>;
+  decisions: number;
+  agreed: number;
+  /** The fly's result in each of its recent hands, oldest first: 1 win, 0 push, -1 loss. */
+  recent: number[];
+}
+
 export interface LogEntry {
   id: number;
   who: SeatId | "system";
@@ -144,6 +154,7 @@ export type ServerMessage =
   | { type: "think"; event: ThinkEvent }
   | { type: "dopamine"; event: DopamineEvent }
   | { type: "fly_evicted"; event: FlyEvictedEvent }
+  | { type: "stats"; stats: FlyStats }
   | { type: "log"; entry: LogEntry }
   | { type: "error"; message: string };
 

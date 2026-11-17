@@ -302,3 +302,27 @@ describe("the table", () => {
     expect(t.brain.resets).toEqual([{ fly: "testplayer0000000000:4", mode: "naive" }]);
   });
 });
+
+describe("the fly's record", () => {
+  test("counts decisions against basic strategy and results per fly", async () => {
+    //            you  fly  dlr  you  fly  dlr  fly hits
+    const t = setup(["K", "10", "10", "Q", "6", "9", "5"], {}, ["hit"]);
+    t.table.handle({ type: "new_round", bet: 10 });
+    await t.until("player");
+    t.table.handle({ type: "stand" });
+    await t.until("settled");
+    const stats = t.messages.filter((m) => m.type === "stats").at(-1);
+    // Hard 16 vs 10: the book hits, so does the fly; on 21 both stand.
+    expect(stats?.type === "stats" && stats.stats).toEqual({
+      cells: { "h16:10": [1, 1], "h21:10": [1, 1] },
+      decisions: 2,
+      agreed: 2,
+      recent: [1],
+    });
+
+    t.table.handle({ type: "reset_brain", mode: "naive" });
+    await Bun.sleep(5);
+    const after = t.messages.filter((m) => m.type === "stats").at(-1);
+    expect(after?.type === "stats" && after.stats.decisions).toBe(0);
+  });
+});

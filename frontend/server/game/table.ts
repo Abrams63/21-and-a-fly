@@ -14,6 +14,7 @@ import type {
 } from "../../shared/protocol";
 import type { Brain } from "../brain/brain";
 import { cardValue, handValue, isBlackjack, Shoe } from "./cards";
+import { FlyStatsBook } from "./flyStats";
 import { canSplitCards, netPayout, outcome } from "./rules";
 
 /** How long the client replays one fly decision (100 ms of simulated time, slowed down). */
@@ -67,6 +68,8 @@ type Other = "fly" | "dealer";
 export interface TableOptions {
   /** Where the cards come from; tests pass a stacked shoe. */
   shoe?: Shoe;
+  /** Where the flies' records are kept; the server shares one book between tables. */
+  stats?: FlyStatsBook;
   /** Multiplies every pause of the table scene; 0 plays a round instantly. */
   pace?: number;
 }
@@ -75,6 +78,7 @@ export interface TableOptions {
 export class Table {
   private readonly shoe: Shoe;
   private readonly pace: number;
+  private readonly stats: FlyStatsBook;
   private roundId = 0;
   private phase: Phase = "idle";
   private player: PlayerHand[] = [newHand(0)];
@@ -102,12 +106,14 @@ export class Table {
   ) {
     this.shoe = options.shoe ?? new Shoe();
     this.pace = options.pace ?? 1;
+    this.stats = options.stats ?? new FlyStatsBook();
   }
 
   private unsubscribe: (() => void) | null = null;
 
   hello(): void {
     this.send({ type: "hello", topology: this.brain.topology, state: this.snapshot() });
+    this.sendStats();
     this.log("system", "table open · dealer draws to 17");
     // The brain can switch between the PyTorch service and the mock at any time.
     this.unsubscribe = this.brain.subscribe(() => {
@@ -208,6 +214,7 @@ export class Table {
     });
     this.log("system", `fly #${ruinedNumber} is broke and got shooed off the table`);
     this.log("system", `fly #${this.bank.flyNumber} sits down with ${this.bank.fly} chips`);
+    this.sendStats();
     this.pushState();
     await this.pause(EVICTION_MS);
   }
@@ -444,6 +451,7 @@ export class Table {
         event: { roundId: this.roundId, observation, replayMs: FLY_REPLAY_MS, ...decision },
       });
       if (!(await this.pause(FLY_REPLAY_MS))) return;
+      this.stats.of(this.flyKey).decided(observation, decision.action);
 
       const votes = `hit ${decision.mbon.hit} · stand ${decision.mbon.stand}`;
       if (decision.action === "stand") {
@@ -538,6 +546,8 @@ export class Table {
       type: "dopamine",
       event: { roundId: this.roundId, reward, replayMs: DOPAMINE_REPLAY_MS, kind, frames },
     });
+    this.stats.of(this.flyKey).finished(reward);
+    this.sendStats();
     this.pushState();
   }
 
@@ -554,6 +564,8 @@ export class Table {
     this.busy = true;
     try {
       await this.brain.reset(this.flyKey, mode);
+      this.stats.forget(this.flyKey);
+      this.sendStats();
       this.log("system", mode === "naive" ? "the fly's brain was wiped" : "the fly's brain was retrained");
     } finally {
       this.busy = false;
@@ -653,6 +665,10 @@ export class Table {
       drunk: this.drunk,
       brain: this.brain.info(this.flyKey),
     };
+  }
+
+  private sendStats(): void {
+    if (!this.closed) this.send({ type: "stats", stats: this.stats.of(this.flyKey).view() });
   }
 
   private pushState(): void {

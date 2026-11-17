@@ -11,6 +11,9 @@ Kenyon cells, the "hit" and "stand" output neurons race each other, and after th
 hand dopamine neurons reward or punish what it did. The fly learns from every
 hand it plays with you. You can also get it drunk.
 
+Next to the brain, a grid shows where the fly plays by the book (basic strategy)
+and where it doesn't, with a learning curve of its recent win rate.
+
 ## How it works
 
 ```

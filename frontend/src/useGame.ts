@@ -4,6 +4,7 @@ import type {
   ClientMessage,
   DopamineEvent,
   FlyEvictedEvent,
+  FlyStats,
   LogEntry,
   ServerMessage,
   TableState,
@@ -38,6 +39,7 @@ export function useGame() {
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [error, setError] = useState<string | null>(null);
   const [eviction, setEviction] = useState<FlyEvictedEvent | null>(null);
+  const [stats, setStats] = useState<FlyStats | null>(null);
   const [bet, setBet] = useState(() => readBankCookie(document.cookie).bet);
   const socketRef = useRef<WebSocket | null>(null);
   const busRef = useRef(new ActivityBus());
@@ -99,6 +101,9 @@ export function useGame() {
           case "dopamine":
             busRef.current.emit({ kind: "dopamine", event: message.event });
             break;
+          case "stats":
+            setStats(message.stats);
+            break;
           case "fly_evicted":
             setEviction(message.event);
             break;
@@ -136,6 +141,7 @@ export function useGame() {
     status,
     error,
     eviction,
+    stats,
     bet,
     setBet,
     send,

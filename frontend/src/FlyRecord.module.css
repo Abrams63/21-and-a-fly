@@ -1,0 +1,207 @@
+.panel {
+  /* Diverging pair, CVD-safe: blue where the fly plays by the book, amber where it doesn't. */
+  --agree: var(--chip-blue);
+  --disagree: var(--amber);
+  --neutral: color-mix(in oklab, var(--ink) 22%, var(--scope-bg));
+
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-l);
+  background: color-mix(in oklab, var(--scope-bg) 85%, var(--felt-900));
+  border: 1px solid var(--scope-line);
+}
+
+.header,
+.curveHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-card);
+  font-size: 1.25rem;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.headline {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+
+  & strong {
+    color: var(--ink);
+  }
+}
+
+.figure {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.grid {
+  inline-size: 100%;
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  table-layout: fixed;
+
+  & th {
+    font-weight: 400;
+    color: var(--ink-faint);
+  }
+
+  & tbody th {
+    text-align: end;
+    padding-inline-end: var(--space-2);
+    inline-size: 2.75rem;
+  }
+
+  & tr[data-first-soft] > * {
+    border-block-start: 0.5rem solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+.caption {
+  caption-side: bottom;
+  padding-block-start: var(--space-2);
+  text-align: start;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+
+.cell {
+  block-size: 1.5rem;
+  text-align: center;
+  border-radius: 0.25rem;
+  color: var(--ink-dim);
+  background: transparent;
+  outline: 1px solid var(--scope-line);
+  outline-offset: -1px;
+
+  &[data-verdict="agree"] {
+    background: color-mix(in oklab, var(--agree) 55%, transparent);
+    color: var(--ink);
+    outline: none;
+  }
+
+  &[data-verdict="mixed"] {
+    background: var(--neutral);
+    color: var(--ink);
+    outline: none;
+  }
+
+  &[data-verdict="disagree"] {
+    background: color-mix(in oklab, var(--disagree) 60%, transparent);
+    color: var(--ink);
+    outline: none;
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}
+
+.key {
+  inline-size: 0.8rem;
+  block-size: 0.8rem;
+  border-radius: 0.2rem;
+  margin-inline-start: var(--space-2);
+
+  &:first-child {
+    margin-inline-start: 0;
+  }
+
+  &[data-verdict="agree"] {
+    background: color-mix(in oklab, var(--agree) 55%, transparent);
+  }
+
+  &[data-verdict="mixed"] {
+    background: var(--neutral);
+  }
+
+  &[data-verdict="disagree"] {
+    background: color-mix(in oklab, var(--disagree) 60%, transparent);
+  }
+
+  &[data-verdict="none"] {
+    outline: 1px solid var(--scope-line);
+    outline-offset: -1px;
+  }
+}
+
+.curve {
+  inline-size: 100%;
+  block-size: auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.gridLine {
+  stroke: var(--scope-line);
+  stroke-width: 1;
+}
+
+.axis {
+  fill: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 8px;
+}
+
+.line {
+  fill: none;
+  stroke: var(--agree);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.crosshair {
+  stroke: var(--ink-faint);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.dot {
+  fill: var(--agree);
+  stroke: var(--scope-bg);
+  stroke-width: 2;
+}
+
+.readout,
+.empty {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}
+
+.visuallyHidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

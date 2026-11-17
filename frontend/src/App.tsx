@@ -1,5 +1,6 @@
 import styles from "./App.module.css";
 import { BrainPanel } from "./BrainPanel";
+import { FlyRecord } from "./FlyRecord";
 import { GameLog } from "./GameLog";
 import { Scoreboard } from "./Scoreboard";
 import { Table } from "./Table";
@@ -12,7 +13,7 @@ const STATUS_TEXT = {
 } as const;
 
 export function App() {
-  const { state, topology, log, status, error, eviction, bet, setBet, send, activity } = useGame();
+  const { state, topology, log, status, error, eviction, stats, bet, setBet, send, activity } = useGame();
 
   return (
     <div className={styles.app}>
@@ -41,6 +42,7 @@ export function App() {
         <aside className={styles.side}>
           <GameLog entries={log} />
           {state && topology && <BrainPanel topology={topology} activity={activity} state={state} send={send} />}
+          {state && stats && <FlyRecord stats={stats} flyNumber={state.bank.flyNumber} />}
         </aside>
       </main>
     </div>

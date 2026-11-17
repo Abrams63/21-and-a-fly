@@ -3,6 +3,7 @@ import { type Bank, readBankCookie } from "../shared/bank";
 import type { ClientMessage } from "../shared/protocol";
 import index from "../src/index.html";
 import { HybridBrain } from "./brain/hybridBrain";
+import { FlyStatsBook } from "./game/flyStats";
 import { Table } from "./game/table";
 
 interface SocketData {
@@ -12,6 +13,8 @@ interface SocketData {
 }
 
 const brain = new HybridBrain(process.env.FLY_BRAIN_URL ?? "ws://127.0.0.1:8000/ws/brain");
+/** Every fly's record (decisions against basic strategy, recent results), shared by all tables. */
+const stats = new FlyStatsBook();
 let nextTableId = 0;
 
 const CLIENT_TYPES = new Set<ClientMessage["type"]>([
@@ -74,9 +77,15 @@ const server = serve({
     data: {} as SocketData,
 
     open(ws: ServerWebSocket<SocketData>) {
-      const table = new Table(`t${++nextTableId}`, brain, ws.data.bank, (message) => {
-        ws.send(JSON.stringify(message));
-      });
+      const table = new Table(
+        `t${++nextTableId}`,
+        brain,
+        ws.data.bank,
+        (message) => {
+          ws.send(JSON.stringify(message));
+        },
+        { stats },
+      );
       ws.data.table = table;
       table.hello();
     },
