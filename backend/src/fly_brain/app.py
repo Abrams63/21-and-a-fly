@@ -164,9 +164,18 @@ def create_app(brain_factory: Callable[[], FlyBrain] = FlyBrain) -> FastAPI:
 
 
 def main() -> None:
+    import socket
+
     import uvicorn
 
     # Loopback by default; a container sets FLY_BRAIN_HOST="::" (every IPv4 and IPv6 interface).
     host = os.environ.get("FLY_BRAIN_HOST", "127.0.0.1")
     port = int(os.environ.get("FLY_BRAIN_PORT") or os.environ.get("PORT") or "8000")
-    uvicorn.run(create_app(), host=host, port=port)
+    server = uvicorn.Server(uvicorn.Config(create_app(), host=host, port=port))
+    if host == "::" and socket.has_dualstack_ipv6():
+        # asyncio binds "::" as IPv6-only; open one socket for both families instead,
+        # since health checks and private networking may arrive over either.
+        sock = socket.create_server(("::", port), family=socket.AF_INET6, dualstack_ipv6=True)
+        server.run(sockets=[sock])
+    else:
+        server.run()
