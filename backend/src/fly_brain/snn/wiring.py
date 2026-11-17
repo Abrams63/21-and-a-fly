@@ -13,6 +13,7 @@ writes `data/hemibrain_mb.npz`; without that file the synthetic wiring is used.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -23,7 +24,7 @@ N_INPUT = 30
 KC_FAN_IN = 7
 W_IN = 0.55  # drive per synthetic PN→KC connection: one active input rarely fires a KC, two do
 
-DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+DATA_DIR = Path(os.environ.get("FLY_BRAIN_DATA_DIR") or Path(__file__).resolve().parents[3] / "data")
 HEMIBRAIN_FILE = DATA_DIR / "hemibrain_mb.npz"
 
 

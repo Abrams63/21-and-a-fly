@@ -47,3 +47,13 @@ allowed-confusables = ["−", "–", "×", "γ", "α"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["fly_brain"]
+
+# On Linux (Docker / Railway) take the CPU-only torch wheels: the default PyPI build
+# pulls several GB of CUDA libraries the brain never uses. Windows and macOS wheels are CPU-only already.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

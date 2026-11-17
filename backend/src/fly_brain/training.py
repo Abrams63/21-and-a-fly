@@ -12,6 +12,7 @@ same three-factor rule as the live brain to a randomly drawn cached code.
 from __future__ import annotations
 
 import argparse
+import os
 import time
 from pathlib import Path
 
@@ -20,7 +21,7 @@ import torch
 from .snn import FlyNetwork, load_wiring, plasticity
 from .snn.codec import encode
 
-CHECKPOINT_DIR = Path(__file__).resolve().parents[2] / "checkpoints"
+CHECKPOINT_DIR = Path(os.environ.get("FLY_BRAIN_CHECKPOINT_DIR") or Path(__file__).resolve().parents[2] / "checkpoints")
 CHECKPOINT_FILE = CHECKPOINT_DIR / "fly_brain.pt"
 
 SUMS = torch.arange(4, 22)
