@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a1d15" />
+    <link rel="icon" type="image/svg+xml" href="./fly.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700&display=swap"
+    />
+    <link rel="stylesheet" href="./global.css" />
+    <link rel="stylesheet" href="./how-it-works.css" />
+    <title>How it works · 21 and Fly</title>
+    <meta
+      name="description"
+      content="How a fruit fly plays blackjack: a spiking model of the Drosophila mushroom body, wired from the hemibrain connectome, that learns from dopamine after every hand."
+    />
+    <link rel="canonical" href="https://21-and-fly.com/how-it-works" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="21 and Fly" />
+    <meta property="og:url" content="https://21-and-fly.com/how-it-works" />
+    <meta property="og:title" content="How a fruit fly plays blackjack" />
+    <meta
+      property="og:description"
+      content="A spiking model of the fly's mushroom body, wired from the real connectome, decides hit or stand and learns from dopamine."
+    />
+    <meta property="og:image" content="https://21-and-fly.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div class="page">
+      <nav class="nav" aria-label="Site">
+        <a href="/" class="home">21 and Fly</a>
+        <a href="/" class="play">Play →</a>
+      </nav>
+
+      <header class="intro">
+        <h1>How a fruit fly plays blackjack</h1>
+        <p class="lede">
+          At the table sit you, a dealer and a fruit fly. The fly's moves come from a spiking neural network modelled
+          on the <em>Drosophila</em> mushroom body, the part of the insect brain that learns which smells lead to
+          food and which to danger. Here it learns which hands to hit and which to stand on.
+        </p>
+      </header>
+
+      <section aria-labelledby="circuit">
+        <h2 id="circuit">The circuit</h2>
+        <ol class="circuit">
+          <li>
+            <h3>30 input channels</h3>
+            <p>
+              What the fly sees: its own total (4 to 21), the dealer's up-card (ace to 10) and whether it holds a
+              usable ace. Each fact switches on one channel, which fires Poisson spikes.
+            </p>
+          </li>
+          <li>
+            <h3>Kenyon cells</h3>
+            <p>
+              About 1,900 leaky integrate-and-fire neurons, each listening to a few input channels. A feedback
+              neuron (APL) inhibits them all, so only about one in ten stays active: every hand gets its own sparse
+              code.
+            </p>
+          </li>
+          <li>
+            <h3>Output neurons: hit or stand</h3>
+            <p>
+              Kenyon cells feed two pools of mushroom-body output neurons (MBONs). The network runs for 100 ms of
+              simulated time; the pool that fires more makes the move.
+            </p>
+          </li>
+          <li>
+            <h3>Dopamine</h3>
+            <p>
+              When the hand is over, dopamine neurons report how it went: PAM cells after a win, PPL1 cells after a
+              loss. The signal is the surprise, the reward minus what the fly expected.
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="learning">
+        <h2 id="learning">How it learns</h2>
+        <p>
+          Only the synapses from Kenyon cells to output neurons change, by a three-factor rule: a synapse grows
+          stronger or weaker when its Kenyon cell was active, its output pool made the move, and dopamine arrived
+          afterwards. Biologists think the real mushroom body learns roughly this way.
+        </p>
+        <p>
+          Before you meet it, the fly is trained on 400,000 simulated hands, after which it plays close to basic
+          strategy. "Newborn fly" starts from random synapses instead, so you can watch it learn from scratch. Either
+          way it keeps learning from every hand it plays with you, and the panel beside the brain shows where it
+          plays by the book and how its win rate moves.
+        </p>
+        <p>
+          Every player gets their own fly: the wiring is shared, the learned synapses, resets and drinks are not.
+        </p>
+      </section>
+
+      <section aria-labelledby="connectome">
+        <h2 id="connectome">Wired from a real fly</h2>
+        <p>
+          The wiring comes from the
+          <a href="https://www.janelia.org/project-team/flyem/hemibrain">hemibrain connectome</a> (version 1.2.1),
+          an electron-microscopy map of about 25,000 neurons in half a fly brain, read through
+          <a href="https://neuprint.janelia.org">neuPrint</a>. From it the model takes the Kenyon cells, how many
+          synapses each receives from the 30 busiest input glomeruli, and how strongly each Kenyon cell reaches the
+          output neurons.
+        </p>
+        <p>
+          Which output neurons count as "hit" and which as "stand" follows their known valence (Aso et al., 2014):
+          the approach-type pool hits, the avoidance-type pool stands. That part is a modelling choice: the connectome
+          says nothing about blackjack.
+        </p>
+      </section>
+
+      <section aria-labelledby="screen">
+        <h2 id="screen">What you see on screen</h2>
+        <ul class="facts">
+          <li>
+            <strong>Real:</strong> the spikes while the fly decides are replayed from the simulation, slowed down, and
+            the hit and stand counts are the actual output-neuron spikes.
+          </li>
+          <li>
+            <strong>Simplified:</strong> the dopamine burst after a hand is drawn from a small model of the dopamine
+            neurons, not from the connectome.
+          </li>
+          <li><strong>Decoration:</strong> the faint flicker between hands is background animation.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="drunk">
+        <h2 id="drunk">Getting the fly drunk</h2>
+        <p>
+          The slider imitates alcohol: weaker excitation, stronger inhibition, noisier and faster membranes, and
+          learned synapses that reach the output less clearly. The sparse code blurs and the fly plays noticeably
+          worse, which is roughly what ethanol does to real flies.
+        </p>
+      </section>
+
+      <section aria-labelledby="table">
+        <h2 id="table">The house rules</h2>
+        <ul class="facts">
+          <li>Six decks; the dealer stands on 17. Blackjack pays 3 to 2, a win 1 to 1.</li>
+          <li>You can double down and split a pair; the fly only hits or stands.</li>
+          <li>The fly matches your bet. A fly that can't is shooed off, and a new one sits down.</li>
+        </ul>
+      </section>
+
+      <footer class="footer">
+        <a href="/" class="play">Play 21 and Fly →</a>
+        <p>
+          Code: <a href="https://github.com/Abrams63/21-and-fly">github.com/Abrams63/21-and-fly</a>. Connectome:
+          Scheffer et al. (2020), <em>eLife</em>. MBON valence: Aso et al. (2014), <em>eLife</em>.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>

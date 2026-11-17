@@ -1,6 +1,7 @@
 import { type ServerWebSocket, serve } from "bun";
 import { type Bank, readBankCookie } from "../shared/bank";
 import type { ClientMessage } from "../shared/protocol";
+import howItWorks from "../src/how-it-works.html";
 import index from "../src/index.html";
 import { HybridBrain } from "./brain/hybridBrain";
 import { FlyStatsBook } from "./game/flyStats";
@@ -54,6 +55,9 @@ const SITEMAP_XML = `<?xml version="1.0" encoding="UTF-8"?>
   <url>
     <loc>${SITE_URL}/</loc>
   </url>
+  <url>
+    <loc>${SITE_URL}/how-it-works</loc>
+  </url>
 </urlset>
 `;
 
@@ -62,6 +66,7 @@ const server = serve({
 
   routes: {
     "/": index,
+    "/how-it-works": howItWorks,
 
     "/robots.txt": new Response(ROBOTS_TXT, { headers: { "Content-Type": "text/plain; charset=utf-8" } }),
     "/sitemap.xml": new Response(SITEMAP_XML, { headers: { "Content-Type": "application/xml; charset=utf-8" } }),

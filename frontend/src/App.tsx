@@ -22,6 +22,9 @@ export function App() {
       <header className={styles.header}>
         <h1 className={styles.visuallyHidden}>21 and Fly</h1>
         {state && <Scoreboard state={state} />}
+        <a className={styles.howLink} href="/how-it-works">
+          How it works
+        </a>
         <button
           type="button"
           className={styles.soundToggle}
