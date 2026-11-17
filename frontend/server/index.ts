@@ -14,7 +14,16 @@ interface SocketData {
 const brain = new HybridBrain(process.env.FLY_BRAIN_URL ?? "ws://127.0.0.1:8000/ws/brain");
 let nextTableId = 0;
 
-const CLIENT_TYPES = new Set<ClientMessage["type"]>(["new_round", "rebuy", "hit", "stand", "set_drunk", "reset_brain"]);
+const CLIENT_TYPES = new Set<ClientMessage["type"]>([
+  "new_round",
+  "rebuy",
+  "hit",
+  "stand",
+  "double",
+  "split",
+  "set_drunk",
+  "reset_brain",
+]);
 
 function parseMessage(raw: string | Buffer): ClientMessage | null {
   try {

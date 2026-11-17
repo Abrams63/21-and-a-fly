@@ -13,6 +13,7 @@ export type SeatId = "player" | "fly" | "dealer";
 export type Outcome = "win" | "lose" | "push";
 export type HandStatus = "waiting" | "playing" | "stood" | "bust" | "blackjack";
 export type Phase = "idle" | "dealing" | "player" | "fly" | "dealer" | "settled";
+/** What the fly can do; you can also double down and split. */
 export type Action = "hit" | "stand";
 
 export interface HandView {
@@ -22,6 +23,23 @@ export interface HandView {
   total: number | null;
   soft: boolean;
   status: HandStatus;
+}
+
+/** One of your hands: two after a split. */
+export interface PlayerHandView extends HandView {
+  bet: number;
+  doubled: boolean;
+  /** Set once the round is settled. */
+  result?: Outcome;
+  payout?: number;
+}
+
+export interface PlayerView {
+  hands: PlayerHandView[];
+  /** The hand you are playing now. */
+  active: number;
+  canDouble: boolean;
+  canSplit: boolean;
 }
 
 export interface SeatScore {
@@ -35,11 +53,13 @@ export type Gambler = "player" | "fly";
 export interface TableState {
   roundId: number;
   phase: Phase;
-  hands: Record<SeatId, HandView>;
+  hands: Record<"fly" | "dealer", HandView>;
+  player: PlayerView;
+  /** Your result is the sum over your hands: a win if you came out ahead. */
   results: Partial<Record<Gambler, Outcome>>;
   score: Record<Gambler, SeatScore>;
   bank: Bank;
-  /** Stakes of the current round; the fly always matches your bet. */
+  /** Stakes of the current round: yours over all your hands; the fly matches your opening bet. */
   bets: Record<Gambler, number> | null;
   /** Net win/loss of the last settled round. */
   payouts: Partial<Record<Gambler, number>>;
@@ -132,5 +152,7 @@ export type ClientMessage =
   | { type: "rebuy" }
   | { type: "hit" }
   | { type: "stand" }
+  | { type: "double" }
+  | { type: "split" }
   | { type: "set_drunk"; value: number }
   | { type: "reset_brain"; mode: BrainMode };

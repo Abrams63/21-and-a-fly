@@ -48,3 +48,16 @@
   padding: var(--space-3) var(--space-2) var(--space-2);
   border-block-start: 1px solid var(--felt-line);
 }
+
+/* After a split your two hands share your seat's column: side by side when there is room, stacked otherwise. */
+.split {
+  display: grid;
+  grid-template-rows: none;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  align-content: start;
+  gap: var(--space-3);
+
+  & > * {
+    min-inline-size: 0;
+  }
+}

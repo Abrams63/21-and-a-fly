@@ -7,6 +7,8 @@ interface Props {
   roundId: number;
   bet: number;
   canDeal: boolean;
+  canDouble: boolean;
+  canSplit: boolean;
   send: (message: ClientMessage) => void;
 }
 
@@ -19,10 +21,10 @@ const PROMPT: Record<Phase, string> = {
   settled: "Round over",
 };
 
-export function Controls({ phase, roundId, bet, canDeal, send }: Props) {
+export function Controls({ phase, roundId, bet, canDeal, canDouble, canSplit, send }: Props) {
   const yourTurn = phase === "player";
 
-  // Keyboard shortcuts: H — hit, S — stand, N — deal.
+  // Keyboard shortcuts: H — hit, S — stand, D — double down, P — split (a pair), N — deal.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -31,11 +33,13 @@ export function Controls({ phase, roundId, bet, canDeal, send }: Props) {
       const key = event.code;
       if (key === "KeyH" && yourTurn) send({ type: "hit" });
       else if (key === "KeyS" && yourTurn) send({ type: "stand" });
+      else if (key === "KeyD" && canDouble) send({ type: "double" });
+      else if (key === "KeyP" && canSplit) send({ type: "split" });
       else if (key === "KeyN" && canDeal) send({ type: "new_round", bet });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [yourTurn, canDeal, bet, send]);
+  }, [yourTurn, canDeal, canDouble, canSplit, bet, send]);
 
   return (
     <div className={styles.controls}>
@@ -61,6 +65,26 @@ export function Controls({ phase, roundId, bet, canDeal, send }: Props) {
           onClick={() => send({ type: "stand" })}
         >
           Stand <kbd className={styles.kbd}>S</kbd>
+        </button>
+        <button
+          type="button"
+          className={styles.button}
+          disabled={!canDouble}
+          aria-keyshortcuts="D"
+          title="Double your bet, take one card and stand"
+          onClick={() => send({ type: "double" })}
+        >
+          Double <kbd className={styles.kbd}>D</kbd>
+        </button>
+        <button
+          type="button"
+          className={styles.button}
+          disabled={!canSplit}
+          aria-keyshortcuts="P"
+          title="Split a pair into two hands, each with your bet"
+          onClick={() => send({ type: "split" })}
+        >
+          Split <kbd className={styles.kbd}>P</kbd>
         </button>
         <button
           type="button"

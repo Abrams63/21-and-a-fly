@@ -50,6 +50,10 @@ Details, training and the API are in [`backend/README.md`](backend/README.md).
 
 - You and the fly start with 100 chips; the fly always matches your bet.
 - Blackjack pays 3:2, a win pays 1:1, the dealer stands on 17.
+- You can double down on your first two cards and split a pair once (any two
+  ten-value cards count; split aces get one card each, and 21 after a split is
+  not a blackjack). The fly only hits or stands: its brain has just those two
+  output pools.
 - A fly that can't cover your bet is shooed off and a new one sits down.
   The scoreboard counts flies ruined and rounds won, you vs flies.
 - Out of chips after a round? Buy back in for 100.

@@ -129,7 +129,7 @@ describe("a round", () => {
     const t = setup(["A", "10", "9", "K", "7", "8"]);
     t.table.handle({ type: "new_round", bet: 5 });
     const s = await t.until("settled");
-    expect(s.hands.player.status).toBe("blackjack");
+    expect(s.player.hands[0]?.status).toBe("blackjack");
     expect(s.payouts.player).toBe(8);
     expect(s.bank.player).toBe(108);
   });
@@ -149,8 +149,103 @@ describe("a round", () => {
     await t.until("player");
     t.table.handle({ type: "hit" });
     const s = await t.until("settled");
-    expect(s.hands.player.total).toBe(21);
+    expect(s.player.hands[0]?.total).toBe(21);
     expect(s.results.player).toBe("win");
+  });
+});
+
+describe("double down and split", () => {
+  /** Lets the table finish its current step (it runs with no pauses). */
+  const settle = () => Bun.sleep(5);
+
+  test("doubling on 11 takes one card and pays on twice the bet", async () => {
+    //            you  fly  dlr  you  fly  dlr  double
+    const t = setup(["5", "10", "10", "6", "8", "7", "K"]);
+    t.table.handle({ type: "new_round", bet: 10 });
+    await t.until("player");
+    expect(t.state().player.canDouble).toBe(true);
+    expect(t.state().player.canSplit).toBe(false);
+    t.table.handle({ type: "double" });
+    const s = await t.until("settled");
+    expect(s.player.hands).toEqual([
+      expect.objectContaining({ total: 21, bet: 20, doubled: true, result: "win", payout: 20 }),
+    ]);
+    expect(s.bets?.player).toBe(20);
+    expect(s.payouts.player).toBe(20);
+    expect(s.bank.player).toBe(120);
+  });
+
+  test("you can only double on your first two cards and with chips to cover it", async () => {
+    const t = setup(["2", "10", "10", "3", "8", "7", "4"]);
+    t.table.handle({ type: "new_round", bet: 10 });
+    await t.until("player");
+    t.table.handle({ type: "hit" });
+    await settle();
+    expect(t.state().player.canDouble).toBe(false);
+    t.table.handle({ type: "double" });
+    expect(t.state().player.hands[0]?.cards).toHaveLength(3);
+
+    const poor = setup(["5", "10", "10", "6", "8", "7"], { player: 15 });
+    poor.table.handle({ type: "new_round", bet: 10 });
+    await poor.until("player");
+    expect(poor.state().player.canDouble).toBe(false);
+  });
+
+  test("a split pair plays as two hands, each settled on its own", async () => {
+    //            you  fly  dlr  you  fly  dlr  split: h1  h2  double h1  dealer hits
+    const t = setup(["8", "10", "6", "8", "9", "10", "3", "10", "9", "10"]);
+    t.table.handle({ type: "new_round", bet: 10 });
+    await t.until("player");
+    expect(t.state().player.canSplit).toBe(true);
+    t.table.handle({ type: "split" });
+    await t.until("player");
+    await settle();
+    let s = t.state();
+    expect(s.player.hands.map((h) => h.total)).toEqual([11, 18]);
+    expect(s.player.active).toBe(0);
+    expect(s.player.canSplit).toBe(false);
+    t.table.handle({ type: "double" });
+    await settle();
+    expect(t.state().player.active).toBe(1);
+    t.table.handle({ type: "stand" });
+    s = await t.until("settled");
+    expect(s.hands.dealer.status).toBe("bust");
+    expect(s.player.hands.map((h) => [h.bet, h.result, h.payout])).toEqual([
+      [20, "win", 20],
+      [10, "win", 10],
+    ]);
+    expect(s.bets?.player).toBe(30);
+    expect(s.payouts.player).toBe(30);
+    expect(s.results.player).toBe("win");
+    expect(s.bank.player).toBe(130);
+    expect(s.score.player.win).toBe(2);
+  });
+
+  test("split aces get one card each, and 21 after a split is not a blackjack", async () => {
+    //            you  fly  dlr  you  fly  dlr  split: h1  h2
+    const t = setup(["A", "10", "9", "A", "9", "8", "K", "5"]);
+    t.table.handle({ type: "new_round", bet: 10 });
+    await t.until("player");
+    t.table.handle({ type: "split" });
+    const s = await t.until("settled");
+    expect(s.player.hands.map((h) => [h.total, h.status, h.result, h.payout])).toEqual([
+      [21, "stood", "win", 10],
+      [16, "stood", "lose", -10],
+    ]);
+    expect(s.results.player).toBe("push");
+    expect(s.bank.player).toBe(100);
+  });
+
+  test("any two ten-value cards make a pair", async () => {
+    const tens = setup(["K", "9", "9", "10", "8", "8"]);
+    tens.table.handle({ type: "new_round", bet: 10 });
+    await tens.until("player");
+    expect(tens.state().player.canSplit).toBe(true);
+
+    const mixed = setup(["9", "9", "9", "K", "8", "8"]);
+    mixed.table.handle({ type: "new_round", bet: 10 });
+    await mixed.until("player");
+    expect(mixed.state().player.canSplit).toBe(false);
   });
 });
 

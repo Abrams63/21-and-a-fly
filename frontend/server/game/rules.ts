@@ -1,15 +1,17 @@
 import type { Card, Outcome } from "../../shared/protocol";
-import { handValue, isBlackjack } from "./cards";
+import { cardValue, handValue, isBlackjack } from "./cards";
 
-/** How a finished hand did against the dealer's. */
-export function outcome(cards: Card[], dealer: Card[]): Outcome {
+/**
+ * How a finished hand did against the dealer's. `natural` says whether a
+ * two-card 21 counts as blackjack: it doesn't after a split.
+ */
+export function outcome(cards: Card[], dealer: Card[], natural = isBlackjack(cards)): Outcome {
   const p = handValue(cards).total;
   const d = handValue(dealer).total;
   if (p > 21) return "lose";
-  const pBj = isBlackjack(cards);
   const dBj = isBlackjack(dealer);
-  if (pBj && !dBj) return "win";
-  if (dBj && !pBj) return "lose";
+  if (natural && !dBj) return "win";
+  if (dBj && !natural) return "lose";
   if (d > 21 || p > d) return "win";
   return p === d ? "push" : "lose";
 }
@@ -19,4 +21,10 @@ export function netPayout(result: Outcome, bet: number, blackjack: boolean): num
   if (result === "lose") return -bet;
   if (result === "push") return 0;
   return blackjack ? Math.ceil(bet * 1.5) : bet;
+}
+
+/** Two cards of the same value (a ten and a king count) can be split into two hands. */
+export function canSplitCards(cards: Card[]): boolean {
+  const [a, b] = cards;
+  return cards.length === 2 && a !== undefined && b !== undefined && cardValue(a) === cardValue(b);
 }

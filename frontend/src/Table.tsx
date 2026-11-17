@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function Table({ state, eviction, bet, onBetChange, send }: Props) {
-  const { hands, phase, results, bank, bets, payouts, minBet } = state;
+  const { hands, phase, results, bank, bets, payouts, minBet, player } = state;
   const betweenRounds = phase === "idle" || phase === "settled";
   const stake = Math.min(bet, bank.player, MAX_BET);
   const canDeal = betweenRounds && !eviction && bank.player >= minBet;
@@ -32,14 +32,33 @@ export function Table({ state, eviction, bet, onBetChange, send }: Props) {
       </div>
 
       <div className={styles.players}>
-        <Seat
-          title="You"
-          hand={hands.player}
-          active={phase === "player"}
-          result={results.player}
-          bet={bets?.player}
-          payout={payouts.player}
-        />
+        {player.hands.length === 1 && player.hands[0] ? (
+          <Seat
+            title="You"
+            subtitle={player.hands[0].doubled ? "doubled down" : undefined}
+            hand={player.hands[0]}
+            active={phase === "player"}
+            result={results.player}
+            bet={bets?.player}
+            payout={payouts.player}
+          />
+        ) : (
+          <div className={styles.split}>
+            {player.hands.map((hand, i) => (
+              <Seat
+                // biome-ignore lint/suspicious/noArrayIndexKey: a split always has the same two hands
+                key={i}
+                title={`You · hand ${i + 1}`}
+                subtitle={hand.doubled ? "doubled down" : "split hand"}
+                hand={hand}
+                active={phase === "player" && player.active === i}
+                result={hand.result}
+                bet={hand.bet}
+                payout={hand.payout}
+              />
+            ))}
+          </div>
+        )}
         <Seat
           title={`Fly #${bank.flyNumber}`}
           subtitle={state.brain.source === "mock" ? "mock brain" : "PyTorch SNN"}
@@ -71,7 +90,15 @@ export function Table({ state, eviction, bet, onBetChange, send }: Props) {
           onChange={onBetChange}
           onRebuy={() => send({ type: "rebuy" })}
         />
-        <Controls phase={phase} roundId={state.roundId} bet={stake} canDeal={canDeal} send={send} />
+        <Controls
+          phase={phase}
+          roundId={state.roundId}
+          bet={stake}
+          canDeal={canDeal}
+          canDouble={player.canDouble}
+          canSplit={player.canSplit}
+          send={send}
+        />
       </div>
     </section>
   );
