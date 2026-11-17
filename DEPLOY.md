@@ -31,8 +31,9 @@ Variables:
 | `NEUPRINT_APPLICATION_CREDENTIALS` | your neuPrint token (optional, *sealed*). Without it the brain uses the synthetic wiring. |
 
 Volume (optional but recommended): mount a volume at **`/data`**. It keeps the downloaded
-hemibrain wiring and the trained weights, so redeploys start in seconds instead of
-fetching and retraining (~1–2 min of CPU).
+hemibrain wiring, the trained weights and every player's fly (`flies.pt`), so redeploys start
+in seconds instead of fetching and retraining (~1–2 min of CPU), and the flies remember what
+they learned.
 
 The first deploy trains 400k hands before `/health` answers. The health check waits up to 15 min.
 

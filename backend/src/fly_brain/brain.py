@@ -7,6 +7,8 @@ time it is seen.
 
 An episode is one hand: any number of `decide` calls, then one `reward`. The
 three-factor rule runs on `reward`, so the fly keeps learning while you play.
+What the flies learned is saved next to the checkpoint (`save_flies`), so a
+restart or redeploy does not send every fly back to school.
 All methods are thread-safe (FastAPI calls them via `asyncio.to_thread`, Dash
 from its own worker thread).
 """
@@ -16,6 +18,7 @@ from __future__ import annotations
 import threading
 from collections import OrderedDict, deque
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 import torch
@@ -32,6 +35,7 @@ MAX_OPEN_EPISODES = 512
 #: Flies kept in memory; the least recently seen ones are forgotten first.
 MAX_FLIES = 2000
 PRETRAIN_HANDS = 400_000
+FLIES_FILE = CHECKPOINT_FILE.with_name("flies.pt")
 
 
 @dataclass
@@ -49,7 +53,9 @@ class Fly:
 
 
 class FlyBrain:
-    def __init__(self, wiring: Wiring | None = None, checkpoint=CHECKPOINT_FILE) -> None:
+    def __init__(
+        self, wiring: Wiring | None = None, checkpoint=CHECKPOINT_FILE, flies_file: Path | None = FLIES_FILE
+    ) -> None:
         self._lock = threading.Lock()
         self.net = FlyNetwork(wiring or load_wiring())
         hands = load_into(self.net, checkpoint)
@@ -69,6 +75,10 @@ class FlyBrain:
         self.rewards: deque[float] = deque(maxlen=2000)
         self.last_frames: list[list[int]] = []
         self._probe = self._probe_codes()
+        self.flies_file = flies_file
+        #: Hands learned since the flies were last saved.
+        self.unsaved = 0
+        self._load_flies()
 
     # ---- flies ------------------------------------------------------------
 
@@ -157,6 +167,7 @@ class FlyBrain:
                     lr=LIVE_LEARNING_RATE / len(steps),
                 )
                 learner.episodes += 1
+                self.unsaved += 1
                 self.rewards.append(float(reward))
             frames = self.net.dopamine_frames(kind)
             info = self._info(learner, self.net.wiring.source)
@@ -172,9 +183,46 @@ class FlyBrain:
             self.flies.move_to_end(fly)
             while len(self.flies) > MAX_FLIES:
                 self.flies.popitem(last=False)
+            self.unsaved += 1
             if self.last_fly == fly:
                 self.net.w_kc = new.w_kc
             return self._info(new, self.net.wiring.source)
+
+    # ---- saving the flies ------------------------------------------------
+
+    def save_flies(self) -> int:
+        """Writes every fly to `flies_file` (atomically); returns how many. No-op without a file."""
+        if self.flies_file is None:
+            return 0
+        with self._lock:
+            data = {
+                "source": self.net.wiring.source,
+                "n_kc": self.net.n_kc,
+                "flies": {k: (f.w_kc.clone(), f.mode, f.episodes) for k, f in self.flies.items()},
+            }
+            self.unsaved = 0
+        path = self.flies_file
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        torch.save(data, tmp)
+        tmp.replace(path)
+        return len(data["flies"])
+
+    def _load_flies(self) -> None:
+        path = self.flies_file
+        if path is None or not path.exists():
+            return
+        try:
+            data = torch.load(path, weights_only=True)
+        except Exception as error:  # noqa: BLE001 - a torn or foreign file must not keep the brain from starting
+            print(f"Ignoring {path}: {error}")
+            return
+        if data.get("source") != self.net.wiring.source or data.get("n_kc") != self.net.n_kc:
+            print(f"Ignoring {path}: saved for another wiring")
+            return
+        for key, (w_kc, mode, episodes) in list(data["flies"].items())[-MAX_FLIES:]:
+            self.flies[key] = Fly(w_kc, mode, int(episodes))
+        print(f"Loaded {len(self.flies)} flies from {path}")
 
     # ---- what the dashboard uses ---------------------------------------
 

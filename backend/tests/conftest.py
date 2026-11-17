@@ -19,7 +19,7 @@ def small_brain_factory(checkpoint, monkeypatch_session):
     wiring = synthetic(n_kc=300)
     monkeypatch_session.setattr(brain_module, "PRETRAIN_HANDS", 20_000)
     monkeypatch_session.setattr(training, "load_wiring", lambda: wiring)
-    return lambda: FlyBrain(wiring=wiring, checkpoint=checkpoint)
+    return lambda: FlyBrain(wiring=wiring, checkpoint=checkpoint, flies_file=None)
 
 
 @pytest.fixture(scope="session")

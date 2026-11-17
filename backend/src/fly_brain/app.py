@@ -40,6 +40,8 @@ from .schemas import (
 logger = logging.getLogger(__name__)
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]", "::1"}
+#: How often the flies are written to disk while they learn.
+SAVE_EVERY_S = 60
 
 
 def _local_origin(origin: str | None) -> bool:
@@ -63,8 +65,24 @@ def _handle(brain: FlyBrain, req) -> str:
 def create_app(brain_factory: Callable[[], FlyBrain] = FlyBrain) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        app.state.brain = await asyncio.to_thread(brain_factory)
-        yield
+        brain = app.state.brain = await asyncio.to_thread(brain_factory)
+
+        async def autosave() -> None:
+            while True:
+                await asyncio.sleep(SAVE_EVERY_S)
+                if brain.unsaved:
+                    try:
+                        await asyncio.to_thread(brain.save_flies)
+                    except Exception:
+                        logger.exception("saving the flies failed")
+
+        saver = asyncio.create_task(autosave())
+        try:
+            yield
+        finally:
+            saver.cancel()
+            if brain.unsaved:  # a redeploy stops the service with SIGTERM: keep what was learned since the last save
+                await asyncio.to_thread(brain.save_flies)
 
     app = FastAPI(title="Fly brain", lifespan=lifespan)
 

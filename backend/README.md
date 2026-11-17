@@ -63,6 +63,10 @@ The pretrained fly plays close to basic strategy (mean reward about −0.08 per
 hand, naturals excluded). "Naive" mode starts from random weights and learns while
 you play.
 
+Each player's fly is saved to `checkpoints/flies.pt` once a minute while flies
+learn and again on shutdown, and loaded on start-up; the 2,000 most recently seen
+flies are kept.
+
 ## API
 
 | | |
