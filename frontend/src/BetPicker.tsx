@@ -9,6 +9,8 @@ interface Props {
   balance: number;
   minBet: number;
   disabled: boolean;
+  /** A round is being played: the stake is already off the balance. */
+  inPlay: boolean;
   onChange: (bet: number) => void;
   onRebuy: () => void;
 }
@@ -44,9 +46,18 @@ function positionFromBet(bet: number, min: number, max: number): number {
   return Math.round((SLIDER_STEPS * Math.log(bet / min)) / Math.log(max / min));
 }
 
-export function BetPicker({ bet, balance, minBet, disabled, onChange, onRebuy }: Props) {
+export function BetPicker({ bet, balance, minBet, disabled, inPlay, onChange, onRebuy }: Props) {
   const name = useId();
   const sliderId = useId();
+
+  if (balance < minBet && inPlay) {
+    // Everything rides on this hand; whether you are broke is decided when it settles.
+    return (
+      <div className={styles.broke}>
+        <p className={styles.allInText}>All your chips are on the table.</p>
+      </div>
+    );
+  }
 
   if (balance < minBet) {
     return (

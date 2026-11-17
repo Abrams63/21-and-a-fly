@@ -133,6 +133,12 @@
   color: var(--punish);
 }
 
+.allInText {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--ink-dim);
+}
+
 .rebuy {
   min-block-size: 2.75rem;
   padding: var(--space-2) var(--space-4);

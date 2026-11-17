@@ -67,6 +67,7 @@ export function Table({ state, eviction, bet, onBetChange, send }: Props) {
           balance={bank.player}
           minBet={minBet}
           disabled={!betweenRounds || !!eviction}
+          inPlay={!betweenRounds}
           onChange={onBetChange}
           onRebuy={() => send({ type: "rebuy" })}
         />
