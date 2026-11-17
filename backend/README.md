@@ -1,6 +1,6 @@
 # fly-brain
 
-The fly's brain for **21 & a fly**: a spiking model of the *Drosophila* mushroom
+The fly's brain for **21 and Fly**: a spiking model of the *Drosophila* mushroom
 body in PyTorch, served over FastAPI. The Bun game server (`../frontend`) asks it
 what to do on every turn and tells it how each hand ended.
 

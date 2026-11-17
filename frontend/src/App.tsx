@@ -17,7 +17,7 @@ export function App() {
   return (
     <div className={styles.app}>
       <header className={styles.header}>
-        <h1 className={styles.visuallyHidden}>21 &amp; a Fly</h1>
+        <h1 className={styles.visuallyHidden}>21 and Fly</h1>
         {state && <Scoreboard state={state} />}
       </header>
 

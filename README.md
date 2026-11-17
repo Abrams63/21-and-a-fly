@@ -1,4 +1,4 @@
-# 21 & a Fly
+# 21 and Fly
 
 Blackjack with three players at one table: **you**, a **dealer** that follows the
 house rules, and a **fruit fly** whose decisions come from a spiking model of the

@@ -75,4 +75,4 @@ const server = serve({
   },
 });
 
-console.log(`21 & a fly: ${server.url}`);
+console.log(`21 and Fly: ${server.url}`);
