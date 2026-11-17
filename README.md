@@ -87,6 +87,8 @@ cd backend && uv run ruff check . && uv run pytest
 cd frontend && bun run lint && bun check && bun test
 ```
 
+CI (GitHub Actions) runs both sets of checks on every push to `main` and on pull requests.
+
 ## Deploy
 
 Two Railway services from this repository, each with its own Dockerfile:
