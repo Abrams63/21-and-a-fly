@@ -66,3 +66,25 @@
 .placeholder {
   color: var(--ink-dim);
 }
+
+.soundToggle {
+  margin-inline-start: auto;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--ink) 25%, transparent);
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--amber);
+    color: var(--ink);
+  }
+
+  &[aria-pressed="false"] {
+    color: var(--ink-faint);
+    text-decoration: line-through;
+  }
+}

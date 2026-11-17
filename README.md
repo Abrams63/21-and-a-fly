@@ -61,6 +61,8 @@ Details, training and the API are in [`backend/README.md`](backend/README.md).
   The scoreboard counts flies ruined and rounds won, you vs flies.
 - Out of chips after a round? Buy back in for 100.
 - Balances and scores live in a cookie, so they survive a reload.
+- The table clicks, chimes and buzzes (and phones vibrate) on cards, wins,
+  busts and evicted flies; the switch in the header mutes it.
 
 ## Run locally
 

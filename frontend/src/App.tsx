@@ -5,6 +5,7 @@ import { GameLog } from "./GameLog";
 import { Scoreboard } from "./Scoreboard";
 import { Table } from "./Table";
 import { useGame } from "./useGame";
+import { useTableSounds } from "./useTableSounds";
 
 const STATUS_TEXT = {
   connecting: "Connecting…",
@@ -14,12 +15,22 @@ const STATUS_TEXT = {
 
 export function App() {
   const { state, topology, log, status, error, eviction, stats, bet, setBet, send, activity } = useGame();
+  const sound = useTableSounds(state, eviction);
 
   return (
     <div className={styles.app}>
       <header className={styles.header}>
         <h1 className={styles.visuallyHidden}>21 and Fly</h1>
         {state && <Scoreboard state={state} />}
+        <button
+          type="button"
+          className={styles.soundToggle}
+          aria-pressed={sound.enabled}
+          onClick={sound.toggle}
+          title={sound.enabled ? "Mute table sounds and vibration" : "Turn table sounds and vibration on"}
+        >
+          {sound.enabled ? "♪ sound on" : "♪ sound off"}
+        </button>
       </header>
 
       {/* Only shown while the connection is down. */}
