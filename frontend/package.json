@@ -8,6 +8,7 @@
     "start": "NODE_ENV=production bun server/index.ts",
     "build": "bun run build.ts",
     "typecheck": "bun check",
+    "test": "bun test",
     "lint": "biome ci .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write ."

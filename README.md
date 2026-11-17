@@ -84,7 +84,7 @@ cd backend && uv run ruff check . && uv run pytest
 ```
 
 ```bash
-cd frontend && bun run lint && bun check
+cd frontend && bun run lint && bun check && bun test
 ```
 
 ## Deploy

@@ -15,6 +15,7 @@ import type {
 } from "../../shared/protocol";
 import type { Brain } from "../brain/brain";
 import { cardValue, handValue, isBlackjack, Shoe } from "./cards";
+import { netPayout, outcome } from "./rules";
 
 /** How long the client replays one fly decision (100 ms of simulated time, slowed down). */
 const FLY_REPLAY_MS = 1600;
@@ -40,30 +41,19 @@ function cardAt(cards: Card[], index: number): Card {
 
 const emptyScore = (): SeatScore => ({ win: 0, lose: 0, push: 0 });
 
-function outcome(cards: Card[], dealer: Card[]): Outcome {
-  const p = handValue(cards).total;
-  const d = handValue(dealer).total;
-  if (p > 21) return "lose";
-  const pBj = isBlackjack(cards);
-  const dBj = isBlackjack(dealer);
-  if (pBj && !dBj) return "win";
-  if (dBj && !pBj) return "lose";
-  if (d > 21 || p > d) return "win";
-  return p === d ? "push" : "lose";
-}
-
-/** Net result of a bet: blackjack pays 3:2 (rounded up), a win pays 1:1. */
-function netPayout(result: Outcome, bet: number, blackjack: boolean): number {
-  if (result === "lose") return -bet;
-  if (result === "push") return 0;
-  return blackjack ? Math.ceil(bet * 1.5) : bet;
-}
-
 const REWARD: Record<Outcome, number> = { win: 1, lose: -1, push: 0 };
+
+export interface TableOptions {
+  /** Where the cards come from; tests pass a stacked shoe. */
+  shoe?: Shoe;
+  /** Multiplies every pause of the table scene; 0 plays a round instantly. */
+  pace?: number;
+}
 
 /** One game table: you, the fly and a rule-following dealer. One per browser connection. */
 export class Table {
-  private readonly shoe = new Shoe();
+  private readonly shoe: Shoe;
+  private readonly pace: number;
   private roundId = 0;
   private phase: Phase = "idle";
   private hands: Record<SeatId, Card[]> = { player: [], fly: [], dealer: [] };
@@ -84,7 +74,11 @@ export class Table {
     private readonly brain: Brain,
     private readonly bank: Bank,
     private readonly send: (message: ServerMessage) => void,
-  ) {}
+    options: TableOptions = {},
+  ) {
+    this.shoe = options.shoe ?? new Shoe();
+    this.pace = options.pace ?? 1;
+  }
 
   private unsubscribe: (() => void) | null = null;
 
@@ -438,7 +432,7 @@ export class Table {
 
   /** Waits, then reports whether the table is still open. */
   private async pause(ms: number): Promise<boolean> {
-    await Bun.sleep(ms);
+    await Bun.sleep(ms * this.pace);
     return !this.closed;
   }
 
