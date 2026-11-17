@@ -52,9 +52,9 @@ def win_rate_figure(rewards: list[float]) -> go.Figure:
         fig.add_scatter(x=valid, y=np.convolve(r > 0, kernel, "valid"), name="win rate", line={"color": "#7bd389"})
         fig.add_scatter(x=valid, y=np.convolve(r, kernel, "valid"), name="mean reward", line={"color": HIT})
     else:
-        fig.add_annotation(text="No hands played since the last reset", showarrow=False, font={"color": MUTED})
+        fig.add_annotation(text="No hands played yet", showarrow=False, font={"color": MUTED})
     fig.update_yaxes(range=[-1, 1])
-    fig.update_xaxes(title="hands since reset")
+    fig.update_xaxes(title="hands, all flies")
     return _layout(fig, f"Live play (rolling {WINDOW} hands)")
 
 
@@ -159,7 +159,8 @@ def create_dash(get_brain: Callable[[], FlyBrain]) -> Dash:
         top = brain.topology
         summary = (
             f"{info['wiring']} wiring · {top['count']} neurons · {info['mode']} · "
-            f"{info['episodes']:,} hands learned · drunk {snap['drunk']:.0%}"
+            f"{snap['flies']:,} flies at tables · the last one learned from {info['episodes']:,} hands, "
+            f"drunk {snap['drunk']:.0%}"
         )
         return (
             summary,

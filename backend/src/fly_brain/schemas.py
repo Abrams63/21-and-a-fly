@@ -1,8 +1,7 @@
 """Messages on WS /ws/brain and the REST bodies, camelCase on the wire.
 
 Bun → Python: every request carries an `id`; the reply echoes it.
-Python → Bun: `hello` on connect, `info` whenever the brain changes from elsewhere
-(REST, dashboard, another Bun process).
+Python → Bun: `hello` on connect.
 """
 
 from __future__ import annotations
@@ -55,17 +54,22 @@ class Mbon(Wire):
 
 # ---- Bun → Python --------------------------------------------------------
 
+FlyKey = Annotated[str, Field(min_length=1, max_length=200)]
+
 
 class DecideRequest(Wire):
     type: Literal["decide"]
     id: int
+    fly: FlyKey
     episode: str = Field(max_length=200)
     observation: Observation
+    drunk: float = Field(default=0, ge=0, le=1)
 
 
 class RewardRequest(Wire):
     type: Literal["reward"]
     id: int
+    fly: FlyKey
     episode: str = Field(max_length=200)
     reward: float = Field(ge=-1, le=1)
 
@@ -73,17 +77,12 @@ class RewardRequest(Wire):
 class ResetRequest(Wire):
     type: Literal["reset"]
     id: int
+    fly: FlyKey
     mode: Mode
 
 
-class SetDrunkRequest(Wire):
-    type: Literal["set_drunk"]
-    id: int
-    value: float = Field(ge=0, le=1)
-
-
 Request = Annotated[
-    DecideRequest | RewardRequest | ResetRequest | SetDrunkRequest,
+    DecideRequest | RewardRequest | ResetRequest,
     Field(discriminator="type"),
 ]
 request_adapter: TypeAdapter[Request] = TypeAdapter(Request)
@@ -95,14 +94,8 @@ request_adapter: TypeAdapter[Request] = TypeAdapter(Request)
 class Hello(Wire):
     type: Literal["hello"] = "hello"
     topology: Topology
+    #: What a newly seated fly starts with.
     info: Info
-    drunk: float
-
-
-class InfoMessage(Wire):
-    type: Literal["info"] = "info"
-    info: Info
-    drunk: float
 
 
 class DecisionMessage(Wire):
@@ -125,7 +118,6 @@ class Ack(Wire):
     type: Literal["ack"] = "ack"
     id: int
     info: Info
-    drunk: float
 
 
 class ErrorMessage(Wire):
@@ -137,14 +129,8 @@ class ErrorMessage(Wire):
 # ---- REST ----------------------------------------------------------------
 
 
-class ResetBody(Wire):
-    mode: Mode
-
-
-class ModifiersBody(Wire):
-    drunk: float = Field(ge=0, le=1)
-
-
 class BrainState(Wire):
+    #: What a newly seated fly starts with.
     info: Info
-    drunk: float
+    #: Flies currently kept in memory.
+    flies: int

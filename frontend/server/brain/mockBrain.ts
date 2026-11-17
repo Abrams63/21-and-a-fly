@@ -7,7 +7,7 @@ import type {
   SpikeFrame,
   Topology,
 } from "../../shared/protocol";
-import type { Brain, Decision, Reinforcement } from "./brain";
+import { type Brain, type Decision, LruMap, type Reinforcement } from "./brain";
 
 /**
  * In-process stand-in for the PyTorch fly brain, so the web app works on its own.
@@ -15,7 +15,8 @@ import type { Brain, Decision, Reinforcement } from "./brain";
  * It keeps the mushroom-body shape of the real model: input channels → sparse
  * Kenyon cells (KC) → two MBON pools (hit / stand), with KC→MBON weights trained
  * by a dopamine-like reward signal. Spikes are Poisson samples of the firing
- * rates, binned into 5 ms frames for the client to replay.
+ * rates, binned into 5 ms frames for the client to replay. Every fly shares the
+ * wiring and has its own weights.
  */
 
 const INPUTS = 30; // 18 player-sum channels (4..21) + 10 dealer-card channels (1..10) + 2 ace channels
@@ -29,12 +30,21 @@ const DECIDE_FRAMES = 20; // 100 ms of simulated time
 const DOPAMINE_FRAMES = 14;
 const LEARNING_RATE = 0.05;
 const PRETRAIN_EPISODES = 40_000;
+const MAX_FLIES = 2000;
+const MAX_OPEN_EPISODES = 512;
 
 const ACTIONS = ["hit", "stand"] as const satisfies readonly Action[];
 
 interface Step {
   active: Uint16Array;
   action: number;
+}
+
+interface Fly {
+  /** KC→MBON weights, laid out as [kc * 2 + action]. */
+  weights: Float32Array;
+  mode: BrainMode;
+  episodes: number;
 }
 
 function buildTopology(): Topology {
@@ -77,6 +87,30 @@ function inputChannels(obs: FlyObservation): number[] {
   return [obs.playerSum - 4, 18 + obs.dealerCard - 1, obs.usableAce ? 29 : 28];
 }
 
+function randomWeights(): Float32Array {
+  const weights = new Float32Array(KC * 2);
+  for (let i = 0; i < weights.length; i++) weights[i] = (Math.random() - 0.5) * 0.04;
+  return weights;
+}
+
+function value(weights: Float32Array, active: Uint16Array, action: number): number {
+  if (active.length === 0) return 0;
+  let sum = 0;
+  for (const k of active) sum += weights[k * 2 + action] ?? 0;
+  return sum / active.length;
+}
+
+/** Three-factor rule: active KC × chosen MBON × dopamine (reward prediction error). */
+function learn(weights: Float32Array, steps: Step[], reward: number): void {
+  for (const { active, action } of steps) {
+    const delta = LEARNING_RATE * (reward - value(weights, active, action));
+    for (const k of active) {
+      const w = k * 2 + action;
+      weights[w] = (weights[w] ?? 0) + delta;
+    }
+  }
+}
+
 export class MockBrain implements Brain {
   readonly topology = buildTopology();
 
@@ -89,15 +123,12 @@ export class MockBrain implements Brain {
   private readonly kcInputs: Uint8Array;
   private readonly kcCache = new Map<string, Uint16Array>();
 
-  /** KC→MBON weights, laid out as [kc * 2 + action]. */
-  private weights = new Float32Array(KC * 2);
-  private episodes = new Map<string, Step[]>();
-  private learnedEpisodes = 0;
-  private mode: BrainMode = "pretrained";
-  private drunkLevel = 0;
+  /** Weights every pretrained fly starts from; trained the first time a fly needs them. */
+  private pretrained: Float32Array | null = null;
+  private readonly flies = new LruMap<string, Fly>(MAX_FLIES);
+  private readonly open = new LruMap<string, { fly: string; steps: Step[] }>(MAX_OPEN_EPISODES);
 
-  /** `initialMode: null` skips the start-up reset (and its pretraining) until `resetNow` is called. */
-  constructor(initialMode: BrainMode | null = "pretrained") {
+  constructor() {
     const rand = mulberry32(21);
     this.kcInputs = new Uint8Array(KC * KC_FAN_IN);
     for (let k = 0; k < KC; k++) {
@@ -106,23 +137,16 @@ export class MockBrain implements Brain {
       let i = 0;
       for (const ch of picked) this.kcInputs[k * KC_FAN_IN + i++] = ch;
     }
-    if (initialMode) this.resetNow(initialMode);
   }
 
-  info(): BrainInfo {
-    return { source: "mock", mode: this.mode, episodes: this.learnedEpisodes };
+  info(fly: string): BrainInfo {
+    const known = this.flies.get(fly);
+    return { source: "mock", mode: known?.mode ?? "pretrained", episodes: known?.episodes ?? PRETRAIN_EPISODES };
   }
 
-  get drunk(): number {
-    return this.drunkLevel;
-  }
-
-  setDrunk(value: number): void {
-    this.drunkLevel = Math.min(1, Math.max(0, value));
-  }
-
-  async reset(mode: BrainMode): Promise<void> {
-    this.resetNow(mode);
+  async reset(fly: string, mode: BrainMode): Promise<void> {
+    for (const [episode, open] of this.open) if (open.fly === fly) this.open.delete(episode);
+    this.flies.set(fly, this.newFly(mode));
   }
 
   /** The mock never changes on its own. */
@@ -130,8 +154,9 @@ export class MockBrain implements Brain {
     return () => {};
   }
 
-  async decide(episode: string, obs: FlyObservation): Promise<Decision> {
-    const drunk = this.drunkLevel;
+  async decide(fly: string, episode: string, obs: FlyObservation, drunkLevel: number): Promise<Decision> {
+    const drunk = Math.min(1, Math.max(0, drunkLevel));
+    const { weights } = this.fly(fly);
     const channels = new Set(inputChannels(obs));
     const active = this.activeKcs(obs);
     const kcActive = new Uint8Array(KC);
@@ -139,7 +164,7 @@ export class MockBrain implements Brain {
 
     // Alcohol: weaker KC drive and a noisy read-out of the learned values.
     const noise = gaussian() * 0.6 * drunk;
-    const diff = this.value(active, 0) - this.value(active, 1) + noise;
+    const diff = value(weights, active, 0) - value(weights, active, 1) + noise;
     const pHit = ((15 + 85 * sigmoid(6 * diff)) * BIN_MS) / 1000;
     const pStand = ((15 + 85 * sigmoid(-6 * diff)) * BIN_MS) / 1000;
 
@@ -180,19 +205,20 @@ export class MockBrain implements Brain {
 
     const action = mbon.hit === mbon.stand ? (Math.random() < 0.5 ? 0 : 1) : mbon.hit > mbon.stand ? 0 : 1;
 
-    const steps = this.episodes.get(episode) ?? [];
-    steps.push({ active, action });
-    this.episodes.set(episode, steps);
+    const open = this.open.touch(episode);
+    if (open?.fly === fly) open.steps.push({ active, action });
+    else this.open.set(episode, { fly, steps: [{ active, action }] });
 
     return { action: ACTIONS[action], frames, mbon };
   }
 
-  async reward(episode: string, reward: number): Promise<Reinforcement> {
-    const steps = this.episodes.get(episode) ?? [];
-    this.episodes.delete(episode);
-    if (steps.length > 0) {
-      this.learn(steps, reward);
-      this.learnedEpisodes++;
+  async reward(fly: string, episode: string, reward: number): Promise<Reinforcement> {
+    const open = this.open.get(episode);
+    this.open.delete(episode);
+    const learner = this.fly(fly);
+    if (open?.fly === fly && open.steps.length > 0) {
+      learn(learner.weights, open.steps, reward);
+      learner.episodes++;
     }
 
     const kind = reward > 0 ? "pam" : reward < 0 ? "ppl1" : "none";
@@ -210,19 +236,24 @@ export class MockBrain implements Brain {
       }
       frames.push(fired);
     }
-    return { kind, frames };
+    return { kind, frames, info: this.info(fly) };
   }
 
   // ---- internals ---------------------------------------------------------
 
-  /** Synchronous reset; "pretrained" first replays PRETRAIN_EPISODES hands. */
-  resetNow(mode: BrainMode): void {
-    this.mode = mode;
-    this.episodes.clear();
-    this.learnedEpisodes = 0;
-    this.weights = new Float32Array(KC * 2);
-    for (let i = 0; i < this.weights.length; i++) this.weights[i] = (Math.random() - 0.5) * 0.04;
-    if (mode === "pretrained") this.pretrain(PRETRAIN_EPISODES);
+  /** The fly with this key; a new one starts pretrained. */
+  private fly(key: string): Fly {
+    const known = this.flies.touch(key);
+    if (known) return known;
+    const fly = this.newFly("pretrained");
+    this.flies.set(key, fly);
+    return fly;
+  }
+
+  private newFly(mode: BrainMode): Fly {
+    if (mode === "naive") return { weights: randomWeights(), mode, episodes: 0 };
+    if (!this.pretrained) this.pretrained = this.pretrain(PRETRAIN_EPISODES);
+    return { weights: this.pretrained.slice(), mode, episodes: PRETRAIN_EPISODES };
   }
 
   /** KCs that receive at least two active input channels: a sparse code of the hand. */
@@ -244,26 +275,9 @@ export class MockBrain implements Brain {
     return result;
   }
 
-  private value(active: Uint16Array, action: number): number {
-    if (active.length === 0) return 0;
-    let sum = 0;
-    for (const k of active) sum += this.weights[k * 2 + action] ?? 0;
-    return sum / active.length;
-  }
-
-  /** Three-factor rule: active KC × chosen MBON × dopamine (reward prediction error). */
-  private learn(steps: Step[], reward: number): void {
-    for (const { active, action } of steps) {
-      const delta = LEARNING_RATE * (reward - this.value(active, action));
-      for (const k of active) {
-        const w = k * 2 + action;
-        this.weights[w] = (this.weights[w] ?? 0) + delta;
-      }
-    }
-  }
-
   /** Offline training on simulated hands (infinite deck, dealer stands on 17). */
-  private pretrain(episodes: number): void {
+  private pretrain(episodes: number): Float32Array {
+    const weights = randomWeights();
     const draw = () => Math.min(10, 1 + Math.floor(Math.random() * 13));
     const total = (cards: number[]) => {
       const raw = cards.reduce((a, b) => a + b, 0);
@@ -282,7 +296,7 @@ export class MockBrain implements Brain {
       for (;;) {
         const { sum, soft } = total(player);
         const active = this.activeKcs({ playerSum: sum, dealerCard: upCard, usableAce: soft });
-        const greedy = this.value(active, 0) > this.value(active, 1) ? 0 : 1;
+        const greedy = value(weights, active, 0) > value(weights, active, 1) ? 0 : 1;
         const action = Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : greedy;
         steps.push({ active, action });
         if (action === 1) break;
@@ -300,8 +314,8 @@ export class MockBrain implements Brain {
         const d = total(dealer).sum;
         reward = d > 21 || p > d ? 1 : p === d ? 0 : -1;
       }
-      this.learn(steps, reward);
-      this.learnedEpisodes++;
+      learn(weights, steps, reward);
     }
+    return weights;
   }
 }

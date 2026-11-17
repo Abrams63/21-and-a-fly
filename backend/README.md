@@ -67,13 +67,11 @@ you play.
 
 | | |
 |---|---|
-| `WS /ws/brain` | `decide`, `reward`, `reset`, `set_drunk` (each with an `id`); replies `decision`, `reinforcement`, `ack`, `error`; pushes `hello` on connect and `info` on outside changes |
+| `WS /ws/brain` | `decide` (with `fly`, `episode`, `observation`, `drunk`), `reward`, `reset` (each with an `id`); replies `decision`, `reinforcement`, `ack`, `error`; pushes `hello` on connect |
 | `GET /health` | liveness |
-| `GET /brain` | mode, hands learned, wiring, drunk level |
+| `GET /brain` | what a new fly starts with (mode, hands learned, wiring) and how many flies are in memory |
 | `GET /brain/topology` | neuron groups for the spike display |
-| `POST /brain/reset` | `{"mode": "pretrained" \| "naive"}` |
-| `PATCH /brain/modifiers` | `{"drunk": 0..1}` |
-| `GET /dash/` | Dash: live win rate, learned policy heatmap, weight histogram, last spike raster |
+| `GET /dash/` | Dash: live win rate of all flies; policy heatmap, weight histogram and spike raster of the last fly that played |
 
 The service listens on 127.0.0.1 only and refuses WebSocket connections from
 non-local web pages.
@@ -93,7 +91,7 @@ src/fly_brain/
   snn/plasticity.py  three-factor KC → MBON learning
   connectome.py      fly-connectome: download from neuPrint
   training.py        fly-train: offline pretraining
-  brain.py           live brain shared by all tables
+  brain.py           live flies: shared wiring, own weights per fly
   schemas.py         Pydantic wire format (camelCase)
   dashboard.py       Dash app
   app.py             FastAPI app, fly-brain entry point

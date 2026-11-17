@@ -39,6 +39,8 @@ browser (React)  ──WS /ws/game──▶  web: Bun game server  ──WS /ws/
   (KC activity × chosen action × dopamine).
 - Pretrained on 400,000 simulated hands, it plays close to basic strategy.
   "Newborn fly" starts from random weights and learns as you play.
+- Every player gets their own fly: the wiring is shared, the learned weights,
+  resets and drinks are not.
 - "Drunk" weakens excitation and transmission, strengthens inhibition and adds
   noise, and the fly plays noticeably worse.
 

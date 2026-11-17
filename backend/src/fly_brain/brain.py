@@ -1,4 +1,9 @@
-"""The live fly: one spiking mushroom body shared by every table.
+"""The live flies: one spiking mushroom body, one set of learned weights per fly.
+
+Every fly at every table shares the wiring (input → KC → MBON) but has its own
+KC→MBON weights, so what one player teaches their fly, or a reset, or a drink,
+stays at that table. A fly is created from the pretrained weights the first
+time it is seen.
 
 An episode is one hand: any number of `decide` calls, then one `reward`. The
 three-factor rule runs on `reward`, so the fly keeps learning while you play.
@@ -24,13 +29,23 @@ Mode = Literal["pretrained", "naive"]
 ACTIONS = ("hit", "stand")
 LIVE_LEARNING_RATE = 0.05
 MAX_OPEN_EPISODES = 512
+#: Flies kept in memory; the least recently seen ones are forgotten first.
+MAX_FLIES = 2000
 PRETRAIN_HANDS = 400_000
 
 
 @dataclass
 class Step:
+    fly: str
     x: torch.Tensor  # KC eligibility trace [n_kc]
     action: int
+
+
+@dataclass
+class Fly:
+    w_kc: torch.Tensor  # learned KC→MBON weights [n_kc, 2]
+    mode: Mode
+    episodes: int
 
 
 class FlyBrain:
@@ -46,13 +61,47 @@ class FlyBrain:
             hands = PRETRAIN_HANDS
         self._pretrained_w = self.net.w_kc.clone()
         self._pretrained_hands = hands
-        self.mode: Mode = "pretrained"
-        self.episodes = hands
-        self.drunk = 0.0
+        self.flies: OrderedDict[str, Fly] = OrderedDict()
+        #: The fly that played last; the dashboard shows it.
+        self.last_fly: str | None = None
+        self.last_drunk = 0.0
         self._open: OrderedDict[str, list[Step]] = OrderedDict()
         self.rewards: deque[float] = deque(maxlen=2000)
         self.last_frames: list[list[int]] = []
         self._probe = self._probe_codes()
+
+    # ---- flies ------------------------------------------------------------
+
+    def _new_fly(self, mode: Mode) -> Fly:
+        if mode == "pretrained":
+            return Fly(self._pretrained_w.clone(), "pretrained", self._pretrained_hands)
+        net = self.net
+        saved = net.w_kc
+        net.reset_weights(seed=None)
+        fly = Fly(net.w_kc, "naive", 0)
+        net.w_kc = saved
+        return fly
+
+    def _fly(self, key: str) -> Fly:
+        """The fly with this key, created from the pretrained weights if it is new. Call with the lock held."""
+        fly = self.flies.get(key)
+        if fly is None:
+            fly = self.flies[key] = self._new_fly("pretrained")
+            while len(self.flies) > MAX_FLIES:
+                self.flies.popitem(last=False)
+        self.flies.move_to_end(key)
+        return fly
+
+    def _use(self, key: str) -> Fly:
+        """Loads a fly's weights into the network. Call with the lock held."""
+        fly = self._fly(key)
+        self.net.w_kc = fly.w_kc  # the same tensor: plasticity updates the fly in place
+        self.last_fly = key
+        return fly
+
+    @staticmethod
+    def _info(fly: Fly, source: str) -> dict:
+        return {"source": "python", "mode": fly.mode, "episodes": fly.episodes, "wiring": source}
 
     # ---- what the game uses --------------------------------------------
 
@@ -60,25 +109,29 @@ class FlyBrain:
     def topology(self) -> dict:
         return self.net.topology.as_dict()
 
-    def info(self) -> dict:
-        return {
-            "source": "python",
-            "mode": self.mode,
-            "episodes": self.episodes,
-            "wiring": self.net.wiring.source,
-        }
-
-    def decide(self, episode: str, player_sum: int, dealer_card: int, usable_ace: bool) -> dict:
-        rates = encode(torch.tensor([player_sum]), torch.tensor([dealer_card]), torch.tensor([int(usable_ace)]))
+    def info(self, fly: str | None = None) -> dict:
+        """One fly's mode and experience; without a key, what a newly seated fly starts with."""
         with self._lock:
-            result = self.net.simulate(rates, Modifiers(self.drunk), record=True)
+            if fly is None:
+                return self._info(Fly(self._pretrained_w, "pretrained", self._pretrained_hands), self.net.wiring.source)
+            return self._info(self._fly(fly), self.net.wiring.source)
+
+    def decide(
+        self, fly: str, episode: str, player_sum: int, dealer_card: int, usable_ace: bool, drunk: float = 0.0
+    ) -> dict:
+        rates = encode(torch.tensor([player_sum]), torch.tensor([dealer_card]), torch.tensor([int(usable_ace)]))
+        drunk = min(max(float(drunk), 0.0), 1.0)
+        with self._lock:
+            self._use(fly)
+            result = self.net.simulate(rates, Modifiers(drunk), record=True)
             action = int(result.actions[0])
             steps = self._open.setdefault(episode, [])
-            steps.append(Step(plasticity.eligibility(result.kc_counts)[0], action))
+            steps.append(Step(fly, plasticity.eligibility(result.kc_counts)[0], action))
             self._open.move_to_end(episode)
             while len(self._open) > MAX_OPEN_EPISODES:
                 self._open.popitem(last=False)
             self.last_frames = result.frames or []
+            self.last_drunk = drunk
         hz = (result.mbon_rates[0] / 0.1).round().int().tolist()
         return {
             "action": ACTIONS[action],
@@ -86,41 +139,42 @@ class FlyBrain:
             "mbon": {"hit": hz[0], "stand": hz[1]},
         }
 
-    def reward(self, episode: str, reward: float) -> dict:
+    def reward(self, fly: str, episode: str, reward: float) -> dict:
         kind = "pam" if reward > 0 else "ppl1" if reward < 0 else "none"
         with self._lock:
-            steps = self._open.pop(episode, [])
+            # Steps belong to the fly that took them, even if the table has a new fly by now.
+            steps = [s for s in self._open.pop(episode, []) if s.fly == fly]
+            learner = self._use(fly)
             if steps:
                 x = torch.stack([s.x for s in steps])
                 actions = torch.tensor([s.action for s in steps])
                 plasticity.apply(
-                    self.net.w_kc,
+                    learner.w_kc,
                     self.net.kc_pool,
                     x,
                     actions,
                     torch.full((len(steps),), float(reward)),
                     lr=LIVE_LEARNING_RATE / len(steps),
                 )
-                self.episodes += 1
+                learner.episodes += 1
                 self.rewards.append(float(reward))
             frames = self.net.dopamine_frames(kind)
-        return {"kind": kind, "frames": frames}
+            info = self._info(learner, self.net.wiring.source)
+        return {"kind": kind, "frames": frames, "info": info}
 
-    def set_drunk(self, value: float) -> None:
+    def reset(self, fly: str, mode: Mode) -> dict:
+        """Gives this table a fresh fly: pretrained, or naive (random weights)."""
         with self._lock:
-            self.drunk = min(max(float(value), 0.0), 1.0)
-
-    def reset(self, mode: Mode) -> None:
-        with self._lock:
-            self.mode = mode
-            self._open.clear()
-            self.rewards.clear()
-            if mode == "pretrained":
-                self.net.w_kc = self._pretrained_w.clone()
-                self.episodes = self._pretrained_hands
-            else:
-                self.net.reset_weights(seed=None)
-                self.episodes = 0
+            for episode, steps in list(self._open.items()):
+                if any(s.fly == fly for s in steps):
+                    del self._open[episode]
+            new = self.flies[fly] = self._new_fly(mode)
+            self.flies.move_to_end(fly)
+            while len(self.flies) > MAX_FLIES:
+                self.flies.popitem(last=False)
+            if self.last_fly == fly:
+                self.net.w_kc = new.w_kc
+            return self._info(new, self.net.wiring.source)
 
     # ---- what the dashboard uses ---------------------------------------
 
@@ -131,7 +185,7 @@ class FlyBrain:
         return torch.stack(runs).mean(dim=0)
 
     def policy(self) -> torch.Tensor:
-        """Q(stand) − Q(hit) for [player sum 4..21, dealer 1..10, usable ace 0/1]."""
+        """Q(stand) − Q(hit) of the last fly that played, for [player sum 4..21, dealer 1..10, usable ace 0/1]."""
         with self._lock:
             q = self.net.values(self._probe)
         return (q[:, 1] - q[:, 0]).view(18, 10, 2)
@@ -142,9 +196,12 @@ class FlyBrain:
 
     def snapshot(self) -> dict:
         with self._lock:
+            last = self.flies.get(self.last_fly) if self.last_fly else None
+            fly = last or Fly(self._pretrained_w, "pretrained", self._pretrained_hands)
             return {
                 "rewards": list(self.rewards),
                 "frames": list(self.last_frames),
-                "info": self.info(),
-                "drunk": self.drunk,
+                "info": self._info(fly, self.net.wiring.source),
+                "flies": len(self.flies),
+                "drunk": self.last_drunk,
             }

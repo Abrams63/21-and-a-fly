@@ -7,6 +7,8 @@ export const BANK_COOKIE = "fly21_bank";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export interface Bank {
+  /** Random id of this browser, so the brain service can keep its own flies apart from others. */
+  id: string;
   player: number;
   fly: number;
   /** Which fly is at the table: 1 for the first one, +1 for each replacement. */
@@ -24,7 +26,13 @@ export interface SavedBank extends Bank {
   bet: number;
 }
 
+const PLAYER_ID = /^[a-z0-9]{12,32}$/;
+
+const newPlayerId = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, "0")).join("");
+
 export const freshBank = (): SavedBank => ({
+  id: newPlayerId(),
   player: START_BALANCE,
   fly: START_BALANCE,
   flyNumber: 1,
@@ -61,6 +69,7 @@ export function readBankCookie(cookieHeader: string | null | undefined): SavedBa
     try {
       const data = JSON.parse(decodeURIComponent(part.slice(eq + 1).trim())) as Partial<SavedBank>;
       return {
+        id: typeof data.id === "string" && PLAYER_ID.test(data.id) ? data.id : fallback.id,
         player: isCount(data.player) ? data.player : fallback.player,
         fly: isCount(data.fly) ? data.fly : fallback.fly,
         flyNumber: isCount(data.flyNumber, 1) ? data.flyNumber : fallback.flyNumber,

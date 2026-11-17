@@ -76,6 +76,8 @@ export class Table {
   private busy = false;
   private closed = false;
   private logId = 0;
+  /** How drunk this table's fly is, 0..1. Other tables have their own flies. */
+  private drunk = 0;
 
   constructor(
     private readonly id: string,
@@ -93,7 +95,7 @@ export class Table {
     this.unsubscribe = this.brain.subscribe(() => {
       if (this.closed) return;
       this.send({ type: "hello", topology: this.brain.topology, state: this.snapshot() });
-      const info = this.brain.info();
+      const info = this.brain.info(this.flyKey);
       this.log(
         "system",
         info.source === "python"
@@ -123,7 +125,7 @@ export class Table {
         this.playerStand();
         break;
       case "set_drunk":
-        this.brain.setDrunk(message.value);
+        this.drunk = Math.min(1, Math.max(0, message.value));
         this.pushState();
         break;
       case "reset_brain":
@@ -159,6 +161,7 @@ export class Table {
   /** The fly can't cover the bet: it is shooed away and a new one sits down. */
   private async evictFly(): Promise<void> {
     const ruinedNumber = this.bank.flyNumber;
+    const mode = this.brain.info(this.flyKey).mode;
     this.bank.fliesRuined++;
     this.bank.flyNumber++;
     this.bank.fly = newFlyBalance(this.bank.player);
@@ -169,7 +172,7 @@ export class Table {
     this.payouts = {};
     this.bets = null;
     this.phase = "idle";
-    await this.brain.reset(this.brain.info().mode);
+    await this.brain.reset(this.flyKey, mode); // the new fly starts out like the old one did
 
     this.send({
       type: "fly_evicted",
@@ -285,7 +288,7 @@ export class Table {
     this.pushState();
     if (!(await this.pause(STEP_MS))) return;
 
-    const episode = `${this.id}:${this.roundId}`;
+    const episode = this.episode;
     while (this.status.fly === "playing") {
       const { total, soft } = handValue(this.hands.fly);
       const observation = {
@@ -293,7 +296,7 @@ export class Table {
         dealerCard: cardValue(this.upCard),
         usableAce: soft,
       };
-      const decision = await this.brain.decide(episode, observation);
+      const decision = await this.brain.decide(this.flyKey, episode, observation, this.drunk);
       if (this.closed) return;
       this.send({
         type: "think",
@@ -377,11 +380,11 @@ export class Table {
     }
 
     const reward = REWARD[fly.result];
-    const reinforcement = await this.brain.reward(`${this.id}:${this.roundId}`, reward);
+    const { kind, frames } = await this.brain.reward(this.flyKey, this.episode, reward);
     if (this.closed) return;
     this.send({
       type: "dopamine",
-      event: { roundId: this.roundId, reward, replayMs: DOPAMINE_REPLAY_MS, ...reinforcement },
+      event: { roundId: this.roundId, reward, replayMs: DOPAMINE_REPLAY_MS, kind, frames },
     });
     this.pushState();
   }
@@ -398,7 +401,7 @@ export class Table {
     if (this.busy) return;
     this.busy = true;
     try {
-      await this.brain.reset(mode);
+      await this.brain.reset(this.flyKey, mode);
       this.log("system", mode === "naive" ? "the fly's brain was wiped" : "the fly's brain was retrained");
     } finally {
       this.busy = false;
@@ -407,6 +410,16 @@ export class Table {
   }
 
   // ---- helpers -------------------------------------------------------------
+
+  /** The fly at this table: one per browser and seat number, so a new fly is a new key. */
+  private get flyKey(): string {
+    return `${this.bank.id}:${this.bank.flyNumber}`;
+  }
+
+  /** The current hand, as the brain knows it. */
+  private get episode(): string {
+    return `${this.bank.id}:${this.id}:${this.roundId}`;
+  }
 
   /** Runs an async step of the round, blocking player input until it ends. */
   private async run(step: () => Promise<void>): Promise<void> {
@@ -468,8 +481,8 @@ export class Table {
       bets: this.bets && { ...this.bets },
       payouts: { ...this.payouts },
       minBet: MIN_BET,
-      drunk: this.brain.drunk,
-      brain: this.brain.info(),
+      drunk: this.drunk,
+      brain: this.brain.info(this.flyKey),
     };
   }
 

@@ -1,22 +1,20 @@
 import type { Action, BrainInfo, BrainMode, FlyObservation, SpikeFrame, Topology } from "../../shared/protocol";
-import type { Decision, Reinforcement } from "./brain";
+import { type Decision, LruMap, type Reinforcement } from "./brain";
 
 /** Messages from the Python brain service (WS /ws/brain). */
 type PythonMessage =
-  | { type: "hello"; topology: Topology; info: BrainInfo; drunk: number }
-  | { type: "info"; info: BrainInfo; drunk: number }
+  | { type: "hello"; topology: Topology; info: BrainInfo }
   | { type: "decision"; id: number; action: Action; frames: SpikeFrame[]; mbon: Decision["mbon"] }
   | { type: "reinforcement"; id: number; kind: Reinforcement["kind"]; frames: SpikeFrame[]; info: BrainInfo }
-  | { type: "ack"; id: number; info: BrainInfo; drunk: number }
+  | { type: "ack"; id: number; info: BrainInfo }
   | { type: "error"; id: number | null; message: string };
 
 type Reply = Extract<PythonMessage, { id: number }>;
 
 type Request =
-  | { type: "decide"; episode: string; observation: FlyObservation }
-  | { type: "reward"; episode: string; reward: number }
-  | { type: "reset"; mode: BrainMode }
-  | { type: "set_drunk"; value: number };
+  | { type: "decide"; fly: string; episode: string; observation: FlyObservation; drunk: number }
+  | { type: "reward"; fly: string; episode: string; reward: number }
+  | { type: "reset"; fly: string; mode: BrainMode };
 
 interface Pending {
   resolve: (reply: Reply) => void;
@@ -30,13 +28,15 @@ const RETRY_MAX_MS = 10_000;
 /**
  * WebSocket client for the PyTorch brain. Keeps reconnecting in the background;
  * `connected` tells whether it can take requests right now. `onChange` fires
- * when the connection, topology or brain info changes.
+ * when the connection or topology changes.
  */
 export class RemoteBrain {
   connected = false;
   topology: Topology | null = null;
-  info: BrainInfo | null = null;
-  drunk = 0;
+  /** What a newly seated fly starts with. */
+  newFly: BrainInfo | null = null;
+  /** Last known state of each fly, from the service's replies. */
+  private readonly flies = new LruMap<string, BrainInfo>(2000);
 
   private socket: WebSocket | null = null;
   private nextId = 1;
@@ -51,25 +51,26 @@ export class RemoteBrain {
     this.connect();
   }
 
-  async decide(episode: string, observation: FlyObservation, timeoutMs = 2_000): Promise<Decision> {
-    const reply = await this.request({ type: "decide", episode, observation }, timeoutMs);
+  info(fly: string): BrainInfo | null {
+    return this.flies.get(fly) ?? this.newFly;
+  }
+
+  async decide(fly: string, episode: string, observation: FlyObservation, drunk: number): Promise<Decision> {
+    const reply = await this.request({ type: "decide", fly, episode, observation, drunk }, 2_000);
     if (reply.type !== "decision") throw new Error(`unexpected ${reply.type}`);
     return { action: reply.action, frames: reply.frames, mbon: reply.mbon };
   }
 
-  async reward(episode: string, reward: number, timeoutMs = 2_000): Promise<Reinforcement> {
-    const reply = await this.request({ type: "reward", episode, reward }, timeoutMs);
+  async reward(fly: string, episode: string, reward: number): Promise<Reinforcement> {
+    const reply = await this.request({ type: "reward", fly, episode, reward }, 2_000);
     if (reply.type !== "reinforcement") throw new Error(`unexpected ${reply.type}`);
-    this.info = reply.info;
-    return { kind: reply.kind, frames: reply.frames };
+    this.flies.set(fly, reply.info);
+    return { kind: reply.kind, frames: reply.frames, info: reply.info };
   }
 
-  async reset(mode: BrainMode): Promise<void> {
-    await this.request({ type: "reset", mode }, 5_000);
-  }
-
-  async setDrunk(value: number): Promise<void> {
-    await this.request({ type: "set_drunk", value }, 2_000);
+  async reset(fly: string, mode: BrainMode): Promise<void> {
+    const reply = await this.request({ type: "reset", fly, mode }, 5_000);
+    if (reply.type === "ack") this.flies.set(fly, reply.info);
   }
 
   private request(body: Request, timeoutMs: number): Promise<Reply> {
@@ -122,26 +123,17 @@ export class RemoteBrain {
   }
 
   private receive(message: PythonMessage): void {
-    switch (message.type) {
-      case "hello":
-        this.topology = message.topology;
-        this.info = message.info;
-        this.drunk = message.drunk;
-        this.connected = true;
-        this.retryMs = RETRY_MIN_MS;
-        this.announcedDown = false;
-        console.log(`🧠 PyTorch brain connected (${message.info.wiring} wiring, ${message.topology.count} neurons)`);
-        this.onChange();
-        return;
-      case "info":
-        this.info = message.info;
-        this.drunk = message.drunk;
-        this.onChange();
-        return;
-      case "ack":
-        this.info = message.info;
-        this.drunk = message.drunk;
-        break;
+    if (message.type === "hello") {
+      this.topology = message.topology;
+      this.newFly = message.info;
+      // A restarted service may have forgotten flies; their state comes back with the next reply.
+      this.flies.clear();
+      this.connected = true;
+      this.retryMs = RETRY_MIN_MS;
+      this.announcedDown = false;
+      console.log(`🧠 PyTorch brain connected (${message.info.wiring} wiring, ${message.topology.count} neurons)`);
+      this.onChange();
+      return;
     }
     if (message.type === "error" && message.id === null) {
       console.warn(`🧠 brain service error: ${message.message}`);
