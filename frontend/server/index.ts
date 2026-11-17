@@ -3,6 +3,7 @@ import { type Bank, readBankCookie } from "../shared/bank";
 import type { ClientMessage } from "../shared/protocol";
 import howItWorks from "../src/how-it-works.html";
 import index from "../src/index.html";
+import ogImage from "../src/og-image.png" with { type: "file" };
 import { HybridBrain } from "./brain/hybridBrain";
 import { FlyStatsBook } from "./game/flyStats";
 import { Table } from "./game/table";
@@ -83,6 +84,9 @@ const server = serve({
     "/how-it-works": howItWorks,
 
     "/robots.txt": new Response(ROBOTS_TXT, { headers: { "Content-Type": "text/plain; charset=utf-8" } }),
+    "/og-image.png": new Response(Bun.file(ogImage), {
+      headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" },
+    }),
     "/sitemap.xml": new Response(SITEMAP_XML, { headers: { "Content-Type": "application/xml; charset=utf-8" } }),
     "/api/analytics": Response.json(ANALYTICS, { headers: { "Cache-Control": "public, max-age=300" } }),
 

@@ -17,3 +17,11 @@ declare module "*.svg" {
   const path: `${string}.svg`;
   export = path;
 }
+
+declare module "*.png" {
+  /**
+   * A path to the PNG file
+   */
+  const path: string;
+  export = path;
+}
