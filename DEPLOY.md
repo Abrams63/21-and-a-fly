@@ -70,3 +70,18 @@ switches over as soon as the PyTorch brain connects.
 | `NEUPRINT_APPLICATION_CREDENTIALS` | brain | — | neuPrint token for the first wiring fetch |
 | `PORT` | web | `3000` | Port |
 | `FLY_BRAIN_URL` | web | `ws://127.0.0.1:8000/ws/brain` | Brain WebSocket |
+| `SITE_URL` | web | `https://21-and-fly.com` | Public address for the sitemap, robots.txt and which host analytics counts |
+| `UMAMI_WEBSITE_ID` | web | — | Turns on Umami visit counting (no cookies); the website id from your Umami dashboard |
+| `UMAMI_SCRIPT_URL` | web | `https://cloud.umami.is/script.js` | Umami tracker script, for a self-hosted Umami |
+
+## Visit counting (optional)
+
+The site can count visits with [Umami](https://umami.is), which sets no cookies and
+keeps no personal data, so no consent banner is needed. It is off until you set it up:
+
+1. Create a free Umami Cloud account and add the website `21-and-fly.com`.
+2. Copy its website id (a UUID) from the website's settings.
+3. In Railway, add `UMAMI_WEBSITE_ID=<that id>` to the `web` service's variables.
+
+Only visits on the `SITE_URL` host are counted, so local runs and the
+`*.up.railway.app` address don't skew the numbers.

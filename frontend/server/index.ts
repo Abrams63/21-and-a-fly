@@ -61,6 +61,20 @@ const SITEMAP_XML = `<?xml version="1.0" encoding="UTF-8"?>
 </urlset>
 `;
 
+/**
+ * Umami visit counting, off unless UMAMI_WEBSITE_ID is set. Umami uses no cookies and
+ * stores no personal data; only visits on SITE_URL's host are counted.
+ */
+const UMAMI_ID = process.env.UMAMI_WEBSITE_ID?.trim() ?? "";
+const ANALYTICS = /^[0-9a-f-]{36}$/i.test(UMAMI_ID)
+  ? {
+      src: process.env.UMAMI_SCRIPT_URL?.trim() || "https://cloud.umami.is/script.js",
+      websiteId: UMAMI_ID,
+      domains: new URL(SITE_URL).hostname,
+    }
+  : null;
+if (UMAMI_ID && !ANALYTICS) console.warn("UMAMI_WEBSITE_ID is not a website id (a UUID); visit counting is off");
+
 const server = serve({
   port: Number(process.env.PORT ?? 3000),
 
@@ -70,6 +84,7 @@ const server = serve({
 
     "/robots.txt": new Response(ROBOTS_TXT, { headers: { "Content-Type": "text/plain; charset=utf-8" } }),
     "/sitemap.xml": new Response(SITEMAP_XML, { headers: { "Content-Type": "application/xml; charset=utf-8" } }),
+    "/api/analytics": Response.json(ANALYTICS, { headers: { "Cache-Control": "public, max-age=300" } }),
 
     "/ws/game": (req, server) => {
       const { bet: _bet, ...bank } = readBankCookie(req.headers.get("cookie"));
