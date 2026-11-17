@@ -1,0 +1,20 @@
+.field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0 var(--space-3);
+  flex: 1 1 14rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.label {
+  color: var(--ink-dim);
+}
+
+.output {
+  grid-column: 2;
+  justify-self: end;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+}

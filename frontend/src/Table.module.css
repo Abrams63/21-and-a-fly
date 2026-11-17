@@ -1,0 +1,50 @@
+.table {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-6);
+  /* A gentle curve: the bottom bar must stay clear of the rail. */
+  border-radius: var(--radius-l) var(--radius-l) 3.5rem 3.5rem / var(--radius-l) var(--radius-l) 2.5rem 2.5rem;
+  background: radial-gradient(ellipse at 50% 35%, var(--felt-700), var(--felt-800) 75%);
+  border: 0.6rem solid var(--rail);
+  box-shadow:
+    inset 0 0 0 1px var(--felt-line),
+    inset 0 0 3rem rgb(0 0 0 / 0.45),
+    0 1.5rem 3rem rgb(0 0 0 / 0.4);
+}
+
+.dealer {
+  display: flex;
+  justify-content: center;
+}
+
+.rule {
+  justify-self: center;
+  padding: var(--space-1) var(--space-4);
+  border-block: 1px solid var(--felt-line);
+  font-family: var(--font-card);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: color-mix(in oklab, var(--ink) 55%, transparent);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.players {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+
+  /* Header, cards and footer of both seats sit on shared rows, so they line up
+     even though the fly's header (with its glyph) is taller. */
+  & > * {
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+  }
+}
+
+.bar {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2) var(--space-2);
+  border-block-start: 1px solid var(--felt-line);
+}

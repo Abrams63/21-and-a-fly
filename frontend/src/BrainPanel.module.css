@@ -1,0 +1,110 @@
+.panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-l);
+  background: color-mix(in oklab, var(--scope-bg) 85%, var(--felt-900));
+  border: 1px solid var(--scope-line);
+  box-shadow: 0 0 0 0 transparent;
+  transition:
+    box-shadow 0.6s ease-out,
+    border-color 0.6s ease-out;
+
+  &[data-dopamine="pam"] {
+    border-color: var(--reward);
+    box-shadow: 0 0 2.5rem -0.5rem var(--reward);
+  }
+
+  &[data-dopamine="ppl1"] {
+    border-color: var(--punish);
+    box-shadow: 0 0 2.5rem -0.5rem var(--punish);
+  }
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-card);
+  font-size: 1.25rem;
+}
+
+.badge {
+  padding: 0.1rem var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-dim);
+
+  &[data-source="python"] {
+    border-color: var(--reward);
+    color: var(--reward);
+  }
+}
+
+.ghost {
+  min-block-size: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--scope-line);
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    color: var(--ink);
+    border-color: var(--amber);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.header .ghost {
+  margin-inline-start: auto;
+}
+
+.verdict {
+  margin: 0;
+  min-block-size: 1.5em;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.reward {
+  color: var(--reward);
+}
+
+.punish {
+  color: var(--punish);
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--scope-line);
+}
+
+.resets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

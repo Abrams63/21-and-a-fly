@@ -1,0 +1,75 @@
+/* Design tokens and a minimal base. Component styles live in their own *.module.css. */
+@layer base;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+
+    /* palette */
+    --felt-900: #0a1d15;
+    --felt-800: #0f2a1f;
+    --felt-700: #164032;
+    --felt-line: #2a5a47;
+    --rail: #2b1f12;
+    --fly-body: #2d2a26;
+    --fly-eye: #b3262f;
+    --chip-blue: #4c8dff;
+    --chip-violet: #b06cff;
+    --scope-bg: #060a08;
+    --scope-line: #1a2b23;
+
+    --ink: #f3ece0;
+    --ink-dim: #b4ad9f;
+    --ink-faint: #7c786d;
+
+    --amber: #ffb547;
+    --reward: #3ddc84;
+    --punish: #ff4d5e;
+
+    --card-face: #fbf8f1;
+    --card-ink: #1b1b1b;
+    --card-red: #c8283b;
+
+    /* type */
+    --font-ui: system-ui, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --font-card: "Playfair Display", Georgia, "Times New Roman", serif;
+
+    /* shape & space */
+    --radius-s: 0.375rem;
+    --radius-m: 0.75rem;
+    --radius-l: 1.25rem;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
+    --shadow-card: 0 0.15rem 0.4rem rgb(0 0 0 / 0.35), 0 0.6rem 1.4rem rgb(0 0 0 / 0.25);
+  }
+
+  /* The whole UI is sized in rem: 90% of the user's default font size scales it down by 10%. */
+  html {
+    font-size: 90%;
+  }
+
+  body {
+    margin: 0;
+    min-block-size: 100dvh;
+    background: radial-gradient(ellipse at 50% 0%, var(--felt-800), var(--felt-900) 70%) fixed;
+    color: var(--ink);
+    font-family: var(--font-ui);
+    line-height: 1.5;
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+  }
+}

@@ -1,0 +1,175 @@
+.picker {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.legend {
+  padding: 0;
+  margin-block-end: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+}
+
+.hint {
+  color: var(--ink-faint);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Native radios styled as casino chips; the checked one is lifted via :has(). */
+.chip {
+  --chip-color: var(--ink-dim);
+
+  position: relative;
+
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  border: 0.2rem dashed var(--chip-color);
+  background: color-mix(in oklab, var(--chip-color) 18%, var(--felt-900));
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    translate 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+
+  &[data-value="5"] {
+    --chip-color: var(--ink-dim);
+  }
+  &[data-value="10"] {
+    --chip-color: var(--chip-blue);
+  }
+  &[data-value="25"] {
+    --chip-color: var(--reward);
+  }
+  &[data-value="50"] {
+    --chip-color: var(--punish);
+  }
+  &[data-value="100"] {
+    --chip-color: var(--ink);
+  }
+  &[data-value="500"] {
+    --chip-color: var(--chip-violet);
+  }
+
+  /* High-stakes chips (1K…1M): double rim, colour by leading digit. */
+  &[data-lead] {
+    border-style: double;
+    border-width: 0.3rem;
+    min-inline-size: 3.25rem;
+  }
+
+  &[data-lead="1"] {
+    --chip-color: var(--amber);
+  }
+  &[data-lead="2.5"] {
+    --chip-color: var(--reward);
+  }
+  &[data-lead="5"] {
+    --chip-color: var(--chip-violet);
+  }
+
+  &:has(:checked) {
+    box-shadow:
+      0 0 0 0.15rem var(--amber),
+      0 0.4rem 1rem rgb(0 0 0 / 0.4);
+
+    @media (prefers-reduced-motion: no-preference) {
+      translate: 0 -0.2rem;
+    }
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+  }
+
+  &:has(:disabled) {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+}
+
+.allIn {
+  --chip-color: var(--amber);
+
+  border-radius: var(--radius-m);
+  padding-inline: var(--space-3);
+}
+
+.radio {
+  position: absolute;
+  opacity: 0;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+}
+
+.broke {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brokeText {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--punish);
+}
+
+.rebuy {
+  min-block-size: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--amber);
+  background: transparent;
+  color: var(--amber);
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--amber) 15%, transparent);
+  }
+}
+
+.amount {
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}
+
+.sliderLabel {
+  color: var(--ink-dim);
+}
+
+.sliderRange {
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

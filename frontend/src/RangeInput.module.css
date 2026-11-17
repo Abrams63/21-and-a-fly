@@ -1,0 +1,75 @@
+/* Native range input, restyled as in the modern-web-guidance slider recipe.
+   --attr-min / --attr-max / --control-value are set inline by RangeInput.tsx. */
+.slider {
+  --slider-track-size: 0.4rem;
+  --slider-thumb-size: 1.1rem;
+  --slider-track-color: var(--felt-line);
+  --slider-fill-color: var(--amber);
+  --slider-direction: to right;
+  --slider-progress: calc((var(--control-value) - var(--attr-min)) / (var(--attr-max) - var(--attr-min)) * 100%);
+
+  &:dir(rtl) {
+    --slider-direction: to left;
+  }
+
+  appearance: none;
+  inline-size: 100%;
+  block-size: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--slider-fill-color);
+    outline-offset: 4px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* WebKit/Blink */
+.slider::-webkit-slider-runnable-track {
+  block-size: var(--slider-track-size);
+  border-radius: 999px;
+  background: linear-gradient(
+    var(--slider-direction),
+    var(--slider-fill-color) var(--slider-progress),
+    var(--slider-track-color) var(--slider-progress)
+  );
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  inline-size: var(--slider-thumb-size);
+  block-size: var(--slider-thumb-size);
+  margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
+  border: 0;
+  border-radius: 50%;
+  background: var(--slider-fill-color);
+}
+
+/* Firefox */
+.slider::-moz-range-track {
+  block-size: var(--slider-track-size);
+  border-radius: 999px;
+  background: var(--slider-track-color);
+}
+
+.slider::-moz-range-progress {
+  block-size: var(--slider-track-size);
+  border-radius: 999px;
+  background: var(--slider-fill-color);
+}
+
+.slider::-moz-range-thumb {
+  inline-size: var(--slider-thumb-size);
+  block-size: var(--slider-thumb-size);
+  border: 0;
+  border-radius: 50%;
+  background: var(--slider-fill-color);
+}

@@ -1,0 +1,47 @@
+.meter {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr 3ch;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--ink-dim);
+
+  &[data-winner] {
+    color: var(--amber);
+    font-weight: 600;
+  }
+}
+
+.label {
+  white-space: nowrap;
+}
+
+.track {
+  margin: 0;
+  block-size: 0.5rem;
+  border-radius: 999px;
+  background: var(--scope-line);
+  overflow: hidden;
+}
+
+.bar {
+  display: block;
+  block-size: 100%;
+  background: currentColor;
+  transform-origin: left center;
+  scale: var(--v, 0) 1;
+  transition: scale 0.08s linear;
+}
+
+.value {
+  margin: 0;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
