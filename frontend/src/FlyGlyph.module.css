@@ -3,6 +3,8 @@
   inline-size: 3rem;
   block-size: 3rem;
   overflow: visible;
+  /* A faint rim keeps the slate body readable on the dark felt. */
+  filter: drop-shadow(0 0 1px color-mix(in oklab, var(--ink) 45%, transparent));
   opacity: 1;
   translate: 0;
   transition:
@@ -31,48 +33,58 @@
   }
 }
 
-.wing {
-  fill: color-mix(in oklab, var(--ink) 22%, transparent);
-  stroke: color-mix(in oklab, var(--ink) 55%, transparent);
-  stroke-width: 0.8;
-  transform-box: fill-box;
-}
-
-.wingLeft {
-  transform-origin: 100% 50%;
-}
-
-.wingRight {
-  transform-origin: 0% 50%;
-}
-
-.fly[data-busy] .wing {
-  @media (prefers-reduced-motion: no-preference) {
-    animation: buzz 90ms linear infinite alternate;
-  }
-}
-
-.legs {
-  stroke: var(--ink-dim);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  fill: none;
+.limb {
+  fill: var(--fly-limb);
 }
 
 .body {
   fill: var(--fly-body);
-  stroke: var(--ink-faint);
-  stroke-width: 0.8;
 }
 
-.eye {
-  fill: var(--fly-eye);
+/* Wings hang from the thorax; each one pivots at its shoulder. */
+.wing {
+  transform-box: fill-box;
 }
 
-@keyframes buzz {
+.wingLeft {
+  transform-origin: 100% 0%;
+}
+
+.wingRight {
+  transform-origin: 0% 0%;
+}
+
+.membrane {
+  fill: var(--fly-wing);
+  fill-opacity: 0.9;
+}
+
+.vein {
+  fill: var(--fly-vein);
+}
+
+.fly[data-busy] {
+  @media (prefers-reduced-motion: no-preference) {
+    .wingLeft {
+      animation: buzz-left 90ms linear infinite alternate;
+    }
+    .wingRight {
+      animation: buzz-right 90ms linear infinite alternate;
+    }
+  }
+}
+
+@keyframes buzz-left {
   to {
-    rotate: 0 0 1 18deg;
-    scale: 1 0.7;
+    rotate: 16deg;
+    scale: 0.94;
+  }
+}
+
+@keyframes buzz-right {
+  to {
+    rotate: -16deg;
+    scale: 0.94;
   }
 }
 
