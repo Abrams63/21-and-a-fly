@@ -4,7 +4,7 @@ Blackjack with three players at one table: **you**, a **dealer** that follows th
 house rules, and a **fruit fly** whose decisions come from a spiking model of the
 *Drosophila* mushroom body, wired from the real hemibrain connectome.
 
-**Play:** <https://web-production-2ab288b8.up.railway.app>
+**Play:** <https://21-and-fly.com>
 
 While the fly thinks you watch its neurons fire: input channels light up the
 Kenyon cells, the "hit" and "stand" output neurons race each other, and after the
